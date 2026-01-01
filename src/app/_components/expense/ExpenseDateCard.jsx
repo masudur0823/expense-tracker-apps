@@ -53,9 +53,9 @@ export default function ExpenseDateCard({ data, onDelete }) {
                 <Typography variant="body1" fontWeight={500}>
                   {item.expenseName}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                {/* <Typography variant="caption" color="text.secondary">
                   {item.category || "General"}
-                </Typography>
+                </Typography> */}
               </Box>
 
               <Stack direction="row" spacing={2} alignItems="center">
