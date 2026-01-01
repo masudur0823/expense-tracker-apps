@@ -5,7 +5,7 @@ import EventEmitter from "events";
 
 export async function dbConnect() {
   try {
-    await mongoose.connect(String("mongodb+srv://admin:masud1998@cluster0.jt6ubim.mongodb.net/expense_tracker"));
+    await mongoose.connect(String(process.env.MONGODB_URI));
 
     mongoose.connection.setMaxListeners(20000);
 
