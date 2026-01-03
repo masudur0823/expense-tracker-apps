@@ -72,35 +72,26 @@ export default function ExpensePage() {
     }
   };
 
-useEffect(() => {
-  const saved = localStorage.getItem(FILTER_KEY);
-  if (saved) {
-    const { search, fromDate, toDate } = JSON.parse(saved);
-    setSearch(search || "");
-    setFromDate(fromDate ? dayjs(fromDate) : null);
-    setToDate(toDate ? dayjs(toDate) : null);
-  }
-  isHydrated.current = true;
-}, []);
+  useEffect(() => {
+    const saved = localStorage.getItem(FILTER_KEY);
+    if (saved) {
+      const { search, fromDate, toDate } = JSON.parse(saved);
+      setSearch(search || "");
+      setFromDate(fromDate ? dayjs(fromDate) : null);
+      setToDate(toDate ? dayjs(toDate) : null);
+    }
+    isHydrated.current = true;
+  }, []);
 
   useEffect(() => {
-  if (!isHydrated.current) return;
+    if (!isHydrated.current) return;
 
-  // If all filters are empty → remove storage
-  if (!search && !fromDate && !toDate) {
-    localStorage.removeItem(FILTER_KEY);
-    return;
-  }
-
-  localStorage.setItem(
-    FILTER_KEY,
-    JSON.stringify({
-      search,
-      fromDate: fromDate ? fromDate.toISOString() : null,
-      toDate: toDate ? toDate.toISOString() : null,
-    })
-  );
-}, [search, fromDate, toDate]);
+    // If all filters are empty → remove storage
+    if (!search && !fromDate && !toDate) {
+      localStorage.removeItem(FILTER_KEY);
+      return;
+    }
+  }, [search, fromDate, toDate]);
 
   useEffect(() => {
     fetchExpenses();
@@ -117,7 +108,7 @@ useEffect(() => {
     } else if (range === "month") {
       setFromDate(today.startOf("month"));
       setToDate(today.endOf("month"));
-    }else if (range === "Lastmonth") {
+    } else if (range === "Lastmonth") {
       const lastMonth = today.subtract(1, "month");
       setFromDate(lastMonth.startOf("month"));
       setToDate(lastMonth.endOf("month"));
@@ -145,12 +136,22 @@ useEffect(() => {
   );
   const totalAmount = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
   const handleResetFilters = () => {
-  setSearch("");
-  setFromDate(null);
-  setToDate(null);
-  localStorage.removeItem(FILTER_KEY);
-  setFilterOpen(false);
-};
+    setSearch("");
+    setFromDate(null);
+    setToDate(null);
+    localStorage.removeItem(FILTER_KEY);
+    setFilterOpen(false);
+  };
+  const handleShowResults = () => {
+    // Save filters to localStorage
+    const filtersToSave = {
+      search,
+      fromDate: fromDate ? fromDate.toISOString() : null,
+      toDate: toDate ? toDate.toISOString() : null,
+    };
+    localStorage.setItem(FILTER_KEY, JSON.stringify(filtersToSave));
+    setFilterOpen(false);
+  };
 
   // Helper to show the date range text
   const getFilterText = () => {
@@ -344,7 +345,7 @@ useEffect(() => {
           <Button color="inherit" onClick={handleResetFilters}>
             Reset Filters
           </Button>
-          <Button variant="contained" onClick={() => setFilterOpen(false)}>
+          <Button variant="contained" onClick={handleShowResults}>
             Show Results
           </Button>
         </DialogActions>
