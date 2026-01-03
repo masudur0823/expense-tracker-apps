@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useRef } from "react";
 import {
   Box,
   CircularProgress,
@@ -36,16 +37,19 @@ dayjs.extend(isSameOrAfter);
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
+const FILTER_KEY = "expense_filters";
+
 export default function ExpensePage() {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [search, setSearch] = useState("");
-  
+  const isHydrated = useRef(false);
+
   // Default to null or specific range if you prefer
-  const [fromDate, setFromDate] = useState(null); 
-  const [toDate, setToDate] = useState(null);
+  const [fromDate, setFromDate] = useState(dayjs());
+  const [toDate, setToDate] = useState(dayjs());
 
   const fetchExpenses = async () => {
     try {
@@ -57,6 +61,46 @@ export default function ExpensePage() {
       setLoading(false);
     }
   };
+
+  const handleDelete = async (item) => {
+    console.log(item);
+    try {
+      await axios.delete(`/api/expense/${item.id}`);
+      fetchExpenses();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+useEffect(() => {
+  const saved = localStorage.getItem(FILTER_KEY);
+  if (saved) {
+    const { search, fromDate, toDate } = JSON.parse(saved);
+    setSearch(search || "");
+    setFromDate(fromDate ? dayjs(fromDate) : null);
+    setToDate(toDate ? dayjs(toDate) : null);
+  }
+  isHydrated.current = true;
+}, []);
+
+  useEffect(() => {
+  if (!isHydrated.current) return;
+
+  // If all filters are empty → remove storage
+  if (!search && !fromDate && !toDate) {
+    localStorage.removeItem(FILTER_KEY);
+    return;
+  }
+
+  localStorage.setItem(
+    FILTER_KEY,
+    JSON.stringify({
+      search,
+      fromDate: fromDate ? fromDate.toISOString() : null,
+      toDate: toDate ? toDate.toISOString() : null,
+    })
+  );
+}, [search, fromDate, toDate]);
 
   useEffect(() => {
     fetchExpenses();
@@ -73,11 +117,17 @@ export default function ExpensePage() {
     } else if (range === "month") {
       setFromDate(today.startOf("month"));
       setToDate(today.endOf("month"));
+    }else if (range === "Lastmonth") {
+      const lastMonth = today.subtract(1, "month");
+      setFromDate(lastMonth.startOf("month"));
+      setToDate(lastMonth.endOf("month"));
     }
   };
 
   const filteredExpenses = expenses.filter((e) => {
-    const matchesSearch = e.expenseName.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = e.expenseName
+      .toLowerCase()
+      .includes(search.toLowerCase());
     const expenseDate = dayjs(e.date).startOf("day");
     const from = fromDate ? dayjs(fromDate).startOf("day") : null;
     const to = toDate ? dayjs(toDate).startOf("day") : null;
@@ -90,14 +140,26 @@ export default function ExpensePage() {
   });
 
   const groupedData = groupExpensesByDate(filteredExpenses);
+  const sortedGroupedData = [...groupedData].sort(
+    (a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf()
+  );
   const totalAmount = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const handleResetFilters = () => {
+  setSearch("");
+  setFromDate(null);
+  setToDate(null);
+  localStorage.removeItem(FILTER_KEY);
+  setFilterOpen(false);
+};
 
   // Helper to show the date range text
   const getFilterText = () => {
     if (!fromDate && !toDate && !search) return "All Records";
     let text = "";
     if (fromDate || toDate) {
-      text += `${fromDate ? dayjs(fromDate).format("MMM DD") : "Start"} - ${toDate ? dayjs(toDate).format("MMM DD, YYYY") : "End"}`;
+      text += `${fromDate ? dayjs(fromDate).format("MMM DD") : "Start"} - ${
+        toDate ? dayjs(toDate).format("MMM DD, YYYY") : "End"
+      }`;
     }
     if (search) text += ` | Search: "${search}"`;
     return text;
@@ -106,7 +168,12 @@ export default function ExpensePage() {
   return (
     <Container maxWidth="md" sx={{ py: 2, pt: 0 }}>
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mt={2}>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mt={2}
+      >
         <Box>
           <Typography variant="h6" fontWeight="700" color="primary">
             Expenses
@@ -125,15 +192,27 @@ export default function ExpensePage() {
       </Box>
 
       {/* --- Filter Value Display (Top) --- */}
-      <Box sx={{ mt: 1, mb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+      <Box
+        sx={{
+          mt: 1,
+          mb: 1,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ fontStyle: "italic" }}
+        >
           {getFilterText()}
         </Typography>
         <Typography variant="subtitle2" fontWeight="bold" color="primary">
           Total: {totalAmount.toLocaleString()}tk
         </Typography>
       </Box>
-      
+
       <Divider sx={{ mb: 2 }} />
 
       {/* Main List */}
@@ -142,64 +221,118 @@ export default function ExpensePage() {
           <CircularProgress />
         </Box>
       ) : groupedData.length === 0 ? (
-        <Typography align="center" color="text.secondary" sx={{ py: 5 }}>No expenses found.</Typography>
+        <Typography align="center" color="text.secondary" sx={{ py: 5 }}>
+          No expenses found.
+        </Typography>
       ) : (
         <Stack spacing={3}>
-          {groupedData.map((group) => (
+          {sortedGroupedData.map((group) => (
             <ExpenseDateCard
               key={group.date}
               data={group}
-              onDelete={fetchExpenses}
+              onDelete={handleDelete}
             />
           ))}
         </Stack>
       )}
 
       {/* --- Filter & Stats Modal --- */}
-      <Dialog open={filterOpen} onClose={() => setFilterOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <Dialog
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           Filters & Summary
-          <IconButton onClick={() => setFilterOpen(false)}><CloseIcon /></IconButton>
+          <IconButton onClick={() => setFilterOpen(false)}>
+            <CloseIcon />
+          </IconButton>
         </DialogTitle>
 
         <DialogContent dividers>
           <Stack spacing={3}>
             {/* Quick Select Buttons */}
             <Box>
-              <Typography variant="subtitle2" mb={1} fontWeight="600">Quick Select</Typography>
-              <Stack direction="row" spacing={1}>
-                <Chip label="Today" onClick={() => handleQuickRange("today")} clickable color={fromDate?.isSame(dayjs(), 'day') ? "primary" : "default"} />
-                <Chip label="Last 7 Days" onClick={() => handleQuickRange("week")} clickable />
-                <Chip label="This Month" onClick={() => handleQuickRange("month")} clickable />
+              <Typography variant="subtitle2" mb={1} fontWeight="600">
+                Quick Select
+              </Typography>
+              <Stack direction="row" gap={1} flexWrap={"wrap"}>
+                <Chip
+                  label="Today"
+                  onClick={() => handleQuickRange("today")}
+                  clickable
+                  color={
+                    fromDate?.isSame(dayjs(), "day") ? "primary" : "default"
+                  }
+                />
+                <Chip
+                  label="Last 7 Days"
+                  onClick={() => handleQuickRange("week")}
+                  clickable
+                />
+                <Chip
+                  label="This Month"
+                  onClick={() => handleQuickRange("month")}
+                  clickable
+                />
+                <Chip
+                  label="Last Month"
+                  onClick={() => handleQuickRange("Lastmonth")}
+                  clickable
+                />
               </Stack>
             </Box>
 
             {/* Search */}
             <Box>
-              <Typography variant="subtitle2" mb={1} fontWeight="600">Search</Typography>
+              <Typography variant="subtitle2" mb={1} fontWeight="600">
+                Search
+              </Typography>
               <TextField
-                fullWidth size="small" placeholder="Search expense..."
-                value={search} onChange={(e) => setSearch(e.target.value)}
-                InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>) }}
+                fullWidth
+                size="small"
+                placeholder="Search expense..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
               />
             </Box>
 
             {/* Date Range Picker */}
             <Box>
-              <Typography variant="subtitle2" mb={1} fontWeight="600">Date Range</Typography>
+              <Typography variant="subtitle2" mb={1} fontWeight="600">
+                Date Range
+              </Typography>
               <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                   <DatePicker
                     label="From"
                     value={fromDate}
                     onChange={(newValue) => setFromDate(newValue)}
-                    slotProps={{ textField: { size: "small", fullWidth: true } }}
+                    slotProps={{
+                      textField: { size: "small", fullWidth: true },
+                    }}
                   />
                   <DatePicker
                     label="To"
                     value={toDate}
                     onChange={(newValue) => setToDate(newValue)}
-                    slotProps={{ textField: { size: "small", fullWidth: true } }}
+                    slotProps={{
+                      textField: { size: "small", fullWidth: true },
+                    }}
                   />
                 </Stack>
               </LocalizationProvider>
@@ -208,14 +341,22 @@ export default function ExpensePage() {
         </DialogContent>
 
         <DialogActions sx={{ p: 2 }}>
-          <Button color="inherit" onClick={() => { setFromDate(null); setToDate(null); setSearch(""); }}>
+          <Button color="inherit" onClick={handleResetFilters}>
             Reset Filters
           </Button>
-          <Button variant="contained" onClick={() => setFilterOpen(false)}>Show Results</Button>
+          <Button variant="contained" onClick={() => setFilterOpen(false)}>
+            Show Results
+          </Button>
         </DialogActions>
       </Dialog>
 
-      <AddExpenseModal open={open} onClose={() => { setOpen(false); fetchExpenses(); }} />
+      <AddExpenseModal
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          fetchExpenses();
+        }}
+      />
     </Container>
   );
 }
