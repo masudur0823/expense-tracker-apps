@@ -216,7 +216,7 @@ export default function AddExpenseModal({ open, onClose }) {
             disabled={errors.length > 0 || loading || !text.trim()}
             sx={{ borderRadius: 2, py: 1.5 }}
           >
-            {loading ? <CircularProgress size={26} color="inherit" /> : `Save $${total}`}
+            {loading ? <CircularProgress size={26} color="inherit" /> : `Save ${total}tk`}
           </Button>
         </Box>
       )}
