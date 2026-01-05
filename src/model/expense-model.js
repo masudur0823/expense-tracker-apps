@@ -4,10 +4,12 @@ const expenseSchema = new mongoose.Schema(
   {
     expenseName: {
       type: String,
+      default: "No Expense",
       // required: true,
     },
     amount: {
       type: Number,
+      default: 0,
       // required: true,
     },
     date: {

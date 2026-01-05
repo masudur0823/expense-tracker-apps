@@ -48,16 +48,28 @@ export default function AddExpenseModal({ open, onClose }) {
 
   const handleSubmit = async () => {
     const { expenses, errors: parseErrors } = parseExpenses(text);
-    if (parseErrors.length > 0 || expenses.length === 0) return;
 
-    const expensesWithDate = expenses.map((exp) => ({
-      ...exp,
-      date: date.format("YYYY-MM-DD"),
-    }));
+    // ✅ NEW: allow empty expense
+    if (parseErrors.length > 0) return;
+
+    const payload =
+      expenses.length === 0
+        ? {
+            date: date.format("YYYY-MM-DD"),
+            expensesName: "No Expense",
+            amount: 0,
+          }
+        : {
+            expenses: expenses.map((exp) => ({
+              ...exp,
+              date: date.format("YYYY-MM-DD"),
+            })),
+          };
 
     try {
       setLoading(true);
-      await axios.post("/api/expense", { expenses: expensesWithDate });
+      await axios.post("/api/expense", payload);
+
       setText("");
       setErrors([]);
       setTotal(0);
@@ -84,18 +96,23 @@ export default function AddExpenseModal({ open, onClose }) {
       }}
     >
       {/* Header */}
-      <AppBar 
-        position="sticky" 
-        elevation={0} 
-        sx={{ 
-          bgcolor: "background.paper", 
-          borderBottom: "1px solid", 
+      <AppBar
+        position="sticky"
+        elevation={0}
+        sx={{
+          bgcolor: "background.paper",
+          borderBottom: "1px solid",
           borderColor: "divider",
-          color: "text.primary" 
+          color: "text.primary",
         }}
       >
         <Toolbar>
-          <IconButton edge="start" onClick={onClose} size="small" sx={{ mr: 1 }}>
+          <IconButton
+            edge="start"
+            onClick={onClose}
+            size="small"
+            sx={{ mr: 1 }}
+          >
             <CloseIcon fontSize="small" />
           </IconButton>
           <Typography variant="subtitle1" fontWeight={700} sx={{ flexGrow: 1 }}>
@@ -106,10 +123,14 @@ export default function AddExpenseModal({ open, onClose }) {
               variant="contained"
               disableElevation
               onClick={handleSubmit}
-              disabled={errors.length > 0 || loading || !text.trim()}
+              disabled={errors.length > 0 || loading}
               sx={{ borderRadius: 2, px: 3 }}
             >
-              {loading ? <CircularProgress size={24} color="inherit" /> : "Save"}
+              {loading ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : (
+                "Save"
+              )}
             </Button>
           )}
         </Toolbar>
@@ -119,7 +140,12 @@ export default function AddExpenseModal({ open, onClose }) {
         <Stack spacing={3}>
           {/* Date Picker Section */}
           <Box>
-            <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+            <Typography
+              variant="caption"
+              fontWeight={700}
+              color="text.secondary"
+              sx={{ mb: 1, display: "block" }}
+            >
               TRANSACTION DATE
             </Typography>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -127,12 +153,12 @@ export default function AddExpenseModal({ open, onClose }) {
                 value={date}
                 format="DD-MM-YYYY"
                 onChange={(newValue) => setDate(newValue)}
-                slotProps={{ 
-                    textField: { 
-                        fullWidth: true, 
-                        size: "small",
-                        sx: { bgcolor: 'white' }
-                    } 
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    size: "small",
+                    sx: { bgcolor: "white" },
+                  },
                 }}
               />
             </LocalizationProvider>
@@ -141,15 +167,26 @@ export default function AddExpenseModal({ open, onClose }) {
           {/* Input Section */}
           <Box>
             <Box display="flex" justifyContent="space-between" mb={1}>
-              <Typography variant="caption" fontWeight={700} color="text.secondary">
+              <Typography
+                variant="caption"
+                fontWeight={700}
+                color="text.secondary"
+              >
                 EXPENSE DETAILS
               </Typography>
-              <Box display="flex" alignItems="center" gap={0.5} sx={{ color: 'primary.main', cursor: 'pointer' }}>
+              <Box
+                display="flex"
+                alignItems="center"
+                gap={0.5}
+                sx={{ color: "primary.main", cursor: "pointer" }}
+              >
                 <HelpOutlineIcon sx={{ fontSize: 14 }} />
-                <Typography variant="caption" fontWeight={600}>Format Guide</Typography>
+                <Typography variant="caption" fontWeight={600}>
+                  Format Guide
+                </Typography>
               </Box>
             </Box>
-            
+
             <TextField
               multiline
               rows={isMobile ? 12 : 8}
@@ -159,14 +196,17 @@ export default function AddExpenseModal({ open, onClose }) {
               placeholder={`Example:\nLunch at Subway - 15\nGrocery - 45.50\nTaxi - 10`}
               onChange={(e) => handleChange(e.target.value)}
               sx={{
-                '& .MuiOutlinedInput-root': {
-                  bgcolor: 'white',
-                  fontFamily: 'monospace',
-                  fontSize: '0.9rem',
-                  borderRadius: 2
-                }
+                "& .MuiOutlinedInput-root": {
+                  bgcolor: "white",
+                  fontFamily: "monospace",
+                  fontSize: "0.9rem",
+                  borderRadius: 2,
+                },
               }}
             />
+            <Typography variant="caption" color="text.secondary">
+              Leave empty and save to mark this date as “No Expense”
+            </Typography>
           </Box>
 
           {/* Error Display */}
@@ -184,19 +224,21 @@ export default function AddExpenseModal({ open, onClose }) {
           )}
 
           {/* Total Preview Paper */}
-          <Paper 
-            elevation={0} 
-            sx={{ 
-              p: 2, 
-              bgcolor: 'primary.dark', 
-              color: 'primary.contrastText', 
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2,
+              bgcolor: "primary.dark",
+              color: "primary.contrastText",
               borderRadius: 2,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
             }}
           >
-            <Typography variant="body2" sx={{ opacity: 0.9 }}>Estimated Total</Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+              Estimated Total
+            </Typography>
             <Typography variant="h5" fontWeight={800}>
               {total.toLocaleString(undefined, { minimumFractionDigits: 2 })}tk
             </Typography>
@@ -213,10 +255,16 @@ export default function AddExpenseModal({ open, onClose }) {
             variant="contained"
             disableElevation
             onClick={handleSubmit}
-            disabled={errors.length > 0 || loading || !text.trim()}
+            disabled={errors.length > 0 || loading}
             sx={{ borderRadius: 2, py: 1.5 }}
           >
-            {loading ? <CircularProgress size={26} color="inherit" /> : `Save ${total}tk`}
+            {loading ? (
+              <CircularProgress size={26} color="inherit" />
+            ) : total > 0 ? (
+              `Save ${total}tk`
+            ) : (
+              "Save (No Expense)"
+            )}
           </Button>
         </Box>
       )}

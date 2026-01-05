@@ -26,6 +26,7 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 import CloseIcon from "@mui/icons-material/Close";
 import MenuIcon from "@mui/icons-material/Menu";
 import SettingsIcon from "@mui/icons-material/Settings";
+import ReportIcon from "@mui/icons-material/Report";
 import Drawer from "@mui/material/Drawer";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
@@ -79,7 +80,7 @@ export default function ExpensePage() {
   };
 
   const handleDelete = async (item) => {
-    console.log(item);
+ 
     try {
       await axios.delete(`/api/expense/${item.id}`);
       fetchExpenses();
@@ -438,6 +439,17 @@ export default function ExpensePage() {
           <Divider />
 
           <List>
+            <ListItemButton
+              onClick={() => {
+                setDrawerOpen(false);
+                router.push("/report");
+              }}
+            >
+              <ListItemIcon>
+                <ReportIcon />
+              </ListItemIcon>
+              <ListItemText primary="Report" />
+            </ListItemButton>
             <ListItemButton
               onClick={() => {
                 setDrawerOpen(false);
