@@ -65,8 +65,8 @@ export default function ExpensePage() {
   const [darkMode, setDarkMode] = useState(false);
 
   // Default to null or specific range if you prefer
-  const [fromDate, setFromDate] = useState(dayjs());
-  const [toDate, setToDate] = useState(dayjs());
+  const [fromDate, setFromDate] = useState();
+  const [toDate, setToDate] = useState();
 
   const fetchExpenses = async () => {
     try {
