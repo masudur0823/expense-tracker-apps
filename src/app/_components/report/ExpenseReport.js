@@ -10,6 +10,15 @@ import {
   Card,
   CardContent,
   Button,
+  Grid,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Chip,
 } from "@mui/material";
 import {
   BarChart,
@@ -18,15 +27,40 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
 } from "recharts";
 import dayjs from "dayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import RestaurantIcon from "@mui/icons-material/Restaurant";
+import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
+import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
+import LocalActivityIcon from "@mui/icons-material/LocalActivity";
+import ReceiptIcon from "@mui/icons-material/Receipt";
+import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
+import SchoolIcon from "@mui/icons-material/School";
+import CategoryIcon from "@mui/icons-material/Category";
+
+// Category configuration with colors and icons
+const CATEGORIES = [
+  { value: "food", label: "Food & Dining", color: "#FF6B6B", icon: <RestaurantIcon /> },
+  { value: "transport", label: "Transportation", color: "#4ECDC4", icon: <DirectionsCarIcon /> },
+  { value: "shopping", label: "Shopping", color: "#FFD166", icon: <ShoppingCartIcon /> },
+  { value: "entertainment", label: "Entertainment", color: "#06D6A0", icon: <LocalActivityIcon /> },
+  { value: "bills", label: "Bills & Utilities", color: "#118AB2", icon: <ReceiptIcon /> },
+  { value: "health", label: "Health & Medical", color: "#EF476F", icon: <MedicalServicesIcon /> },
+  { value: "education", label: "Education", color: "#7209B7", icon: <SchoolIcon /> },
+  { value: "other", label: "Other", color: "#6C757D", icon: <CategoryIcon /> },
+];
 
 function ExpenseReport() {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState("daily"); // 'daily' or 'category'
 
   // 📅 Date range
   const [startDate, setStartDate] = useState(dayjs().startOf("month"));
@@ -75,8 +109,37 @@ function ExpenseReport() {
     });
   }, [expenses, startDate, endDate]);
 
-  // 🔹 Bar chart data
-  const chartData = useMemo(() => {
+  // 🔹 Category summary data
+  const categoryData = useMemo(() => {
+    const categoryMap = {};
+    
+    filteredExpenses.forEach((item) => {
+      const category = item.category || "other";
+      categoryMap[category] = (categoryMap[category] || 0) + item.amount;
+    });
+
+    return CATEGORIES.map(cat => ({
+      name: cat.label,
+      value: categoryMap[cat.value] || 0,
+      color: cat.color,
+      icon: cat.icon,
+      percentage: 0 // Will calculate below
+    }))
+    .filter(item => item.value > 0)
+    .sort((a, b) => b.value - a.value);
+  }, [filteredExpenses]);
+
+  // 🔹 Calculate percentages
+  const categoryDataWithPercentages = useMemo(() => {
+    const total = categoryData.reduce((sum, item) => sum + item.value, 0);
+    return categoryData.map(item => ({
+      ...item,
+      percentage: total > 0 ? Math.round((item.value / total) * 100) : 0
+    }));
+  }, [categoryData]);
+
+  // 🔹 Daily bar chart data
+  const dailyChartData = useMemo(() => {
     const map = {};
 
     filteredExpenses.forEach((item) => {
@@ -88,6 +151,66 @@ function ExpenseReport() {
       date,
       total,
     }));
+  }, [filteredExpenses]);
+
+  // 🔹 Category bar chart data (by date)
+  const categoryByDateData = useMemo(() => {
+    const dateMap = {};
+    
+    filteredExpenses.forEach((item) => {
+      const dateKey = dayjs(item.date).format("DD MMM");
+      const category = item.category || "other";
+      
+      if (!dateMap[dateKey]) {
+        dateMap[dateKey] = { date: dateKey };
+      }
+      
+      dateMap[dateKey][category] = (dateMap[dateKey][category] || 0) + item.amount;
+      dateMap[dateKey].total = (dateMap[dateKey].total || 0) + item.amount;
+    });
+
+    return Object.values(dateMap).sort((a, b) => 
+      dayjs(a.date, "DD MMM").valueOf() - dayjs(b.date, "DD MMM").valueOf()
+    );
+  }, [filteredExpenses]);
+
+  // 🔹 Top expenses by category (table data)
+  const topExpensesByCategory = useMemo(() => {
+    const categoryMap = {};
+    
+    filteredExpenses.forEach((item) => {
+      const category = item.category || "other";
+      if (!categoryMap[category]) {
+        categoryMap[category] = {
+          category,
+          total: 0,
+          count: 0,
+          avg: 0,
+          max: 0,
+          maxExpenseName: ""
+        };
+      }
+      
+      categoryMap[category].total += item.amount;
+      categoryMap[category].count += 1;
+      
+      if (item.amount > categoryMap[category].max) {
+        categoryMap[category].max = item.amount;
+        categoryMap[category].maxExpenseName = item.expenseName;
+      }
+    });
+
+    // Calculate averages
+    Object.values(categoryMap).forEach(cat => {
+      cat.avg = Math.round(cat.total / cat.count);
+    });
+
+    return Object.values(categoryMap)
+      .sort((a, b) => b.total - a.total)
+      .map(cat => ({
+        ...cat,
+        categoryLabel: CATEGORIES.find(c => c.value === cat.category)?.label || "Other"
+      }));
   }, [filteredExpenses]);
 
   // 🔹 Total summary
@@ -147,32 +270,294 @@ function ExpenseReport() {
         </Stack>
       </LocalizationProvider>
 
-      {/* 💰 Summary */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography color="text.secondary">
-            Total Expense
-          </Typography>
-          <Typography variant="h4" fontWeight={600}>
-            ৳ {totalAmount.toLocaleString()}
-          </Typography>
-        </CardContent>
-      </Card>
+      {/* 📊 View Mode Toggle */}
+      <Stack direction="row" spacing={1} mb={3}>
+        <Button 
+          variant={viewMode === "daily" ? "contained" : "outlined"}
+          onClick={() => setViewMode("daily")}
+          size="small"
+        >
+          Daily View
+        </Button>
+        <Button 
+          variant={viewMode === "category" ? "contained" : "outlined"}
+          onClick={() => setViewMode("category")}
+          size="small"
+        >
+          Category View
+        </Button>
+      </Stack>
 
-      {/* 📊 Bar Chart */}
-      <Box height={320}>
-        <Typography fontWeight={500} mb={1}>
-          Expense by Date
+      {/* 💰 Summary Cards */}
+      <Grid container spacing={2} mb={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Card>
+            <CardContent>
+              <Typography color="text.secondary" variant="body2">
+                Total Expense
+              </Typography>
+              <Typography variant="h5" fontWeight={600}>
+                ৳ {totalAmount.toLocaleString()}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Typography color="text.secondary" variant="body2">
+                Total Categories
+              </Typography>
+              <Typography variant="h5" fontWeight={600}>
+                {categoryData.length}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Typography color="text.secondary" variant="body2">
+                Transactions
+              </Typography>
+              <Typography variant="h5" fontWeight={600}>
+                {filteredExpenses.length}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Typography color="text.secondary" variant="body2">
+                Avg. Daily
+              </Typography>
+              <Typography variant="h5" fontWeight={600}>
+                ৳ {filteredExpenses.length > 0 
+                  ? Math.round(totalAmount / (dayjs(endDate).diff(startDate, 'day') + 1)) 
+                  : 0}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* 📊 Charts Section */}
+      {viewMode === "daily" ? (
+        <Grid container spacing={3} width={"100%"}>
+          {/* Daily Bar Chart */}
+          <Grid size={{ xs: 12, lg: 8 }}>
+            <Paper sx={{ p: 2 }}>
+              <Typography fontWeight={500} mb={2}>
+                Daily Expenses
+              </Typography>
+              <Box height={300}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dailyChartData}>
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value) => [`৳ ${value.toLocaleString()}`, 'Amount']}
+                    />
+                    <Bar 
+                      dataKey="total" 
+                      radius={[6, 6, 0, 0]} 
+                      fill="#8884d8"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Box>
+            </Paper>
+          </Grid>
+
+          {/* Category Pie Chart */}
+          <Grid item xs={12} lg={4}>
+            <Paper sx={{ p: 2 }}>
+              <Typography fontWeight={500} mb={2}>
+                Category Breakdown
+              </Typography>
+              <Box height={300}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={categoryDataWithPercentages}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percentage }) => `${name}: ${percentage}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {categoryDataWithPercentages.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value) => [`৳ ${value.toLocaleString()}`, 'Amount']}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </Box>
+            </Paper>
+          </Grid>
+        </Grid>
+      ) : (
+        <Grid container spacing={3} width={"100%"}>
+          {/* Category Bar Chart */}
+          <Grid size={{ xs: 12, lg: 8 }}>
+            <Paper sx={{ p: 2 }}>
+              <Typography fontWeight={500} mb={2}>
+                Expenses by Category (Stacked)
+              </Typography>
+              <Box height={400}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={categoryByDateData}>
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value) => [`৳ ${value.toLocaleString()}`, 'Amount']}
+                    />
+                    <Legend />
+                    {CATEGORIES.map((cat) => (
+                      <Bar
+                        key={cat.value}
+                        dataKey={cat.value}
+                        stackId="a"
+                        fill={cat.color}
+                        name={cat.label}
+                        hide={categoryByDateData.every(d => !d[cat.value])}
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </Box>
+            </Paper>
+          </Grid>
+
+          {/* Category Summary */}
+          <Grid item xs={12} lg={4}>
+            <Paper sx={{ p: 2 }}>
+              <Typography fontWeight={500} mb={2}>
+                Category Summary
+              </Typography>
+              <Stack spacing={2}>
+                {categoryDataWithPercentages.map((cat) => (
+                  <Box key={cat.name}>
+                    <Stack 
+                      direction="row" 
+                      justifyContent="space-between" 
+                      alignItems="center"
+                      mb={0.5}
+                    >
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Box sx={{ color: cat.color }}>
+                          {cat.icon}
+                        </Box>
+                        <Typography variant="body2">
+                          {cat.name}
+                        </Typography>
+                      </Stack>
+                      <Typography fontWeight={600}>
+                        ৳ {cat.value.toLocaleString()}
+                      </Typography>
+                    </Stack>
+                    <Box 
+                      sx={{ 
+                        height: 8, 
+                        bgcolor: 'grey.200', 
+                        borderRadius: 4,
+                        overflow: 'hidden'
+                      }}
+                    >
+                      <Box 
+                        sx={{ 
+                          width: `${cat.percentage}%`, 
+                          height: '100%', 
+                          bgcolor: cat.color,
+                          borderRadius: 4
+                        }}
+                      />
+                    </Box>
+                    <Typography variant="caption" color="text.secondary">
+                      {cat.percentage}% of total
+                    </Typography>
+                  </Box>
+                ))}
+              </Stack>
+            </Paper>
+          </Grid>
+        </Grid>
+      )}
+
+      {/* 📋 Category Details Table */}
+      <Paper sx={{ p: 2, mt: 3 }} width={"100%"}>
+        <Typography fontWeight={500} mb={2}>
+          Category Analysis
         </Typography>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData}>
-            <XAxis dataKey="date" />
-            <YAxis />
-            <Tooltip />
-            <Bar dataKey="total" radius={[6, 6, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </Box>
+        <TableContainer>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Category</TableCell>
+                <TableCell align="right">Total Amount</TableCell>
+                <TableCell align="right">Transactions</TableCell>
+                <TableCell align="right">Average</TableCell>
+                <TableCell align="right">Largest Expense</TableCell>
+                <TableCell align="right">% of Total</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {topExpensesByCategory.map((row) => {
+                const percentage = totalAmount > 0 ? Math.round((row.total / totalAmount) * 100) : 0;
+                const categoryConfig = CATEGORIES.find(c => c.value === row.category);
+                
+                return (
+                  <TableRow key={row.category}>
+                    <TableCell>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Chip
+                          size="small"
+                          label={row.categoryLabel}
+                          sx={{
+                            bgcolor: categoryConfig?.color || '#6C757D',
+                            color: 'white',
+                            fontWeight: 500,
+                          }}
+                        />
+                      </Stack>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography fontWeight={600}>
+                        ৳ {row.total.toLocaleString()}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">{row.count}</TableCell>
+                    <TableCell align="right">৳ {row.avg.toLocaleString()}</TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" color="text.secondary">
+                        {row.maxExpenseName}
+                      </Typography>
+                      <Typography variant="body2" fontWeight={600}>
+                        ৳ {row.max.toLocaleString()}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Chip
+                        size="small"
+                        label={`${percentage}%`}
+                        color="primary"
+                        variant="outlined"
+                      />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
     </Box>
   );
 }
