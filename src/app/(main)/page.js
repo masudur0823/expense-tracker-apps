@@ -65,6 +65,7 @@ const FILTER_KEY = "expense_filters";
 // Enhanced categories with icons and colors
 const CATEGORIES = [
   { value: "food", label: "Food & Dining", color: "#FF6B6B", icon: <RestaurantIcon /> },
+   { value: "snacks", label: "Snacks", color: "#416b1a", icon: <RestaurantIcon /> },
   { value: "transport", label: "Transportation", color: "#4ECDC4", icon: <DirectionsCarIcon /> },
   { value: "shopping", label: "Shopping", color: "#FFD166", icon: <ShoppingCartIcon /> },
   { value: "entertainment", label: "Entertainment", color: "#06D6A0", icon: <LocalActivityIcon /> },
