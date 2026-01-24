@@ -48,6 +48,7 @@ import CategoryIcon from "@mui/icons-material/Category";
 // Category configuration with colors and icons
 const CATEGORIES = [
   { value: "food", label: "Food & Dining", color: "#FF6B6B", icon: <RestaurantIcon /> },
+  { value: "snacks", label: "Snacks", color: "#416b1a", icon: <RestaurantIcon /> },
   { value: "transport", label: "Transportation", color: "#4ECDC4", icon: <DirectionsCarIcon /> },
   { value: "shopping", label: "Shopping", color: "#FFD166", icon: <ShoppingCartIcon /> },
   { value: "entertainment", label: "Entertainment", color: "#06D6A0", icon: <LocalActivityIcon /> },
@@ -343,9 +344,8 @@ function ExpenseReport() {
       </Grid>
 
       {/* 📊 Charts Section */}
-      {viewMode === "daily" ? (
+      {/* {viewMode === "daily" ? (
         <Grid container spacing={3} width={"100%"}>
-          {/* Daily Bar Chart */}
           <Grid size={{ xs: 12, lg: 8 }}>
             <Paper sx={{ p: 2 }}>
               <Typography fontWeight={500} mb={2}>
@@ -370,7 +370,6 @@ function ExpenseReport() {
             </Paper>
           </Grid>
 
-          {/* Category Pie Chart */}
           <Grid item xs={12} lg={4}>
             <Paper sx={{ p: 2 }}>
               <Typography fontWeight={500} mb={2}>
@@ -405,7 +404,6 @@ function ExpenseReport() {
         </Grid>
       ) : (
         <Grid container spacing={3} width={"100%"}>
-          {/* Category Bar Chart */}
           <Grid size={{ xs: 12, lg: 8 }}>
             <Paper sx={{ p: 2 }}>
               <Typography fontWeight={500} mb={2}>
@@ -436,7 +434,6 @@ function ExpenseReport() {
             </Paper>
           </Grid>
 
-          {/* Category Summary */}
           <Grid item xs={12} lg={4}>
             <Paper sx={{ p: 2 }}>
               <Typography fontWeight={500} mb={2}>
@@ -489,7 +486,7 @@ function ExpenseReport() {
             </Paper>
           </Grid>
         </Grid>
-      )}
+      )} */}
 
       {/* 📋 Category Details Table */}
       <Paper sx={{ p: 2, mt: 3 }} width={"100%"}>

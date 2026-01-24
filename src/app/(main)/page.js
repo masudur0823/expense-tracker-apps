@@ -41,6 +41,16 @@ import Switch from "@mui/material/Switch";
 import Brightness4Icon from "@mui/icons-material/Brightness4";
 import LogoutIcon from "@mui/icons-material/Logout";
 
+// Import Material Icons for categories
+import RestaurantIcon from "@mui/icons-material/Restaurant";
+import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
+import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
+import LocalActivityIcon from "@mui/icons-material/LocalActivity";
+import ReceiptIcon from "@mui/icons-material/Receipt";
+import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
+import SchoolIcon from "@mui/icons-material/School";
+import CategoryIcon from "@mui/icons-material/Category";
+
 import dayjs from "dayjs";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
@@ -51,6 +61,18 @@ import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
 const FILTER_KEY = "expense_filters";
+
+// Enhanced categories with icons and colors
+const CATEGORIES = [
+  { value: "food", label: "Food & Dining", color: "#FF6B6B", icon: <RestaurantIcon /> },
+  { value: "transport", label: "Transportation", color: "#4ECDC4", icon: <DirectionsCarIcon /> },
+  { value: "shopping", label: "Shopping", color: "#FFD166", icon: <ShoppingCartIcon /> },
+  { value: "entertainment", label: "Entertainment", color: "#06D6A0", icon: <LocalActivityIcon /> },
+  { value: "bills", label: "Bills & Utilities", color: "#118AB2", icon: <ReceiptIcon /> },
+  { value: "health", label: "Health & Medical", color: "#EF476F", icon: <MedicalServicesIcon /> },
+  { value: "education", label: "Education", color: "#7209B7", icon: <SchoolIcon /> },
+  { value: "other", label: "Other", color: "#6C757D", icon: <CategoryIcon /> },
+];
 
 export default function ExpensePage() {
   const [expenses, setExpenses] = useState([]);
@@ -63,6 +85,7 @@ export default function ExpensePage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const router = useRouter();
   const [darkMode, setDarkMode] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState([]);
 
   // Default to null or specific range if you prefer
   const [fromDate, setFromDate] = useState();
@@ -80,7 +103,6 @@ export default function ExpensePage() {
   };
 
   const handleDelete = async (item) => {
- 
     try {
       await axios.delete(`/api/expense/${item.id}`);
       fetchExpenses();
@@ -88,10 +110,12 @@ export default function ExpensePage() {
       console.error(err);
     }
   };
+  
   const handleEdit = async (id, values) => {
     await axios.put(`/api/expense/${id}`, values);
     fetchExpenses(); // refetch or mutate
   };
+  
   useEffect(() => {
     const savedTheme = localStorage.getItem("darkMode");
     if (savedTheme) setDarkMode(savedTheme === "true");
@@ -104,10 +128,11 @@ export default function ExpensePage() {
   useEffect(() => {
     const saved = localStorage.getItem(FILTER_KEY);
     if (saved) {
-      const { search, fromDate, toDate } = JSON.parse(saved);
+      const { search, fromDate, toDate, categories } = JSON.parse(saved);
       setSearch(search || "");
       setFromDate(fromDate ? dayjs(fromDate) : null);
       setToDate(toDate ? dayjs(toDate) : null);
+      setSelectedCategories(categories || []);
     }
     isHydrated.current = true;
   }, []);
@@ -116,11 +141,20 @@ export default function ExpensePage() {
     if (!isHydrated.current) return;
 
     // If all filters are empty → remove storage
-    if (!search && !fromDate && !toDate) {
+    if (!search && !fromDate && !toDate && selectedCategories.length === 0) {
       localStorage.removeItem(FILTER_KEY);
       return;
     }
-  }, [search, fromDate, toDate]);
+
+    // Save filters to localStorage
+    const filtersToSave = {
+      search,
+      fromDate: fromDate ? fromDate.toISOString() : null,
+      toDate: toDate ? toDate.toISOString() : null,
+      categories: selectedCategories,
+    };
+    localStorage.setItem(FILTER_KEY, JSON.stringify(filtersToSave));
+  }, [search, fromDate, toDate, selectedCategories]);
 
   useEffect(() => {
     fetchExpenses();
@@ -129,6 +163,8 @@ export default function ExpensePage() {
   const handleQuickRange = (range) => {
     const today = dayjs();
     setActiveQuick(range);
+    setSelectedCategories([]); // Reset categories when quick range is selected
+    
     if (range === "today") {
       setFromDate(today);
       setToDate(today);
@@ -149,10 +185,21 @@ export default function ExpensePage() {
     }
   };
 
+  const handleCategoryToggle = (categoryValue) => {
+    setSelectedCategories((prev) => {
+      if (prev.includes(categoryValue)) {
+        return prev.filter((c) => c !== categoryValue);
+      } else {
+        return [...prev, categoryValue];
+      }
+    });
+  };
+
   const filteredExpenses = expenses.filter((e) => {
     const matchesSearch = e.expenseName
       .toLowerCase()
       .includes(search.toLowerCase());
+    
     const expenseDate = dayjs(e.date).startOf("day");
     const from = fromDate ? dayjs(fromDate).startOf("day") : null;
     const to = toDate ? dayjs(toDate).startOf("day") : null;
@@ -161,43 +208,67 @@ export default function ExpensePage() {
       (!from || expenseDate.isSameOrAfter(from)) &&
       (!to || expenseDate.isSameOrBefore(to));
 
-    return matchesSearch && inDateRange;
+    // Add category filter logic
+    const category = e.category || "other"; // Default to "other" if not specified
+    const matchesCategory =
+      selectedCategories.length === 0 || selectedCategories.includes(category);
+
+    return matchesSearch && inDateRange && matchesCategory;
   });
 
   const groupedData = groupExpensesByDate(filteredExpenses);
   const sortedGroupedData = [...groupedData].sort(
     (a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf()
   );
+  
   const totalAmount = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+  
   const handleResetFilters = () => {
     setSearch("");
     setFromDate(null);
     setToDate(null);
+    setSelectedCategories([]);
+    setActiveQuick(null);
     localStorage.removeItem(FILTER_KEY);
     setFilterOpen(false);
   };
+  
   const handleShowResults = () => {
-    // Save filters to localStorage
-    const filtersToSave = {
-      search,
-      fromDate: fromDate ? fromDate.toISOString() : null,
-      toDate: toDate ? toDate.toISOString() : null,
-    };
-    localStorage.setItem(FILTER_KEY, JSON.stringify(filtersToSave));
     setFilterOpen(false);
   };
 
   // Helper to show the date range text
   const getFilterText = () => {
-    if (!fromDate && !toDate && !search) return "All Records";
+    if (!fromDate && !toDate && !search && selectedCategories.length === 0)
+      return "All Records";
+    
     let text = "";
     if (fromDate || toDate) {
       text += `${fromDate ? dayjs(fromDate).format("MMM DD") : "Start"} - ${
         toDate ? dayjs(toDate).format("MMM DD, YYYY") : "End"
       }`;
     }
-    if (search) text += ` | Search: "${search}"`;
+    if (selectedCategories.length > 0) {
+      if (text) text += " | ";
+      const selectedLabels = selectedCategories.map(
+        cat => CATEGORIES.find(c => c.value === cat)?.label || cat
+      );
+      if (selectedLabels.length <= 2) {
+        text += `Categories: ${selectedLabels.join(", ")}`;
+      } else {
+        text += `Categories: ${selectedLabels.length} selected`;
+      }
+    }
+    if (search) {
+      if (text) text += " | ";
+      text += `Search: "${search}"`;
+    }
     return text;
+  };
+
+  // Helper to get category by value
+  const getCategoryByValue = (value) => {
+    return CATEGORIES.find(cat => cat.value === value) || CATEGORIES[CATEGORIES.length - 1]; // Return "Other" if not found
   };
 
   const handleLogout = () => {
@@ -232,9 +303,23 @@ export default function ExpensePage() {
                 border: "1px solid",
                 borderColor: "divider",
                 ml: "0 !important",
+                position: "relative",
               }}
             >
               <FilterListIcon fontSize="small" />
+              {(search || fromDate || toDate || selectedCategories.length > 0) && (
+                <Box
+                  sx={{
+                    position: "absolute",
+                    top: -4,
+                    right: -4,
+                    width: 8,
+                    height: 8,
+                    bgcolor: "primary.main",
+                    borderRadius: "50%",
+                  }}
+                />
+              )}
             </IconButton>
             <AddExpenseButton onClick={() => setOpen(true)} />
           </Stack>
@@ -244,7 +329,6 @@ export default function ExpensePage() {
         <Box
           sx={{
             mt: 1,
-
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
@@ -346,7 +430,7 @@ export default function ExpensePage() {
                     label="Last Month"
                     clickable
                     onClick={() => handleQuickRange("Lastmonth")}
-                    color={activeQuick === "lastMonth" ? "primary" : "default"}
+                    color={activeQuick === "Lastmonth" ? "primary" : "default"}
                   />
                 </Stack>
               </Box>
@@ -398,15 +482,108 @@ export default function ExpensePage() {
                   </Stack>
                 </LocalizationProvider>
               </Box>
+
+              {/* Category Filter */}
+              <Box>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                  <Typography variant="subtitle2" fontWeight="600">
+                    Categories
+                  </Typography>
+                  {selectedCategories.length > 0 && (
+                    <Button
+                      size="small"
+                      onClick={() => setSelectedCategories([])}
+                    >
+                      Clear All
+                    </Button>
+                  )}
+                </Box>
+                <Stack direction="row" gap={1} flexWrap="wrap">
+                  {CATEGORIES.map((category) => {
+                    const isSelected = selectedCategories.includes(category.value);
+                    return (
+                      <Chip
+                        key={category.value}
+                        label={category.label}
+                        icon={category.icon}
+                        clickable
+                        onClick={() => handleCategoryToggle(category.value)}
+                        sx={{
+                          backgroundColor: isSelected ? category.color : 'transparent',
+                          color: isSelected ? 'white' : 'inherit',
+                          border: `1px solid ${category.color}`,
+                          '& .MuiChip-icon': {
+                            color: isSelected ? 'white' : category.color,
+                          },
+                          '&:hover': {
+                            backgroundColor: isSelected ? category.color : `${category.color}20`,
+                          },
+                        }}
+                      />
+                    );
+                  })}
+                </Stack>
+                {selectedCategories.length > 0 && (
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                    Selected: {selectedCategories.length} of {CATEGORIES.length} categories
+                  </Typography>
+                )}
+              </Box>
+
+              {/* Summary Statistics */}
+              <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
+                <Typography variant="subtitle2" mb={1} fontWeight="600">
+                  Summary
+                </Typography>
+                <Box display="flex" justifyContent="space-between">
+                  <Typography variant="body2">Matching expenses:</Typography>
+                  <Typography variant="body2" fontWeight="bold">
+                    {filteredExpenses.length}
+                  </Typography>
+                </Box>
+                <Box display="flex" justifyContent="space-between">
+                  <Typography variant="body2">Total amount:</Typography>
+                  <Typography variant="body2" fontWeight="bold" color="primary">
+                    {totalAmount.toLocaleString()}tk
+                  </Typography>
+                </Box>
+                {selectedCategories.length > 0 && (
+                  <Box mt={1}>
+                    <Typography variant="caption" color="text.secondary">
+                      Showing expenses from {selectedCategories.length}{" "}
+                      categor{selectedCategories.length === 1 ? "y" : "ies"}
+                    </Typography>
+                    <Stack direction="row" spacing={0.5} flexWrap="wrap" mt={0.5}>
+                      {selectedCategories.map((catValue) => {
+                        const cat = getCategoryByValue(catValue);
+                        return (
+                          <Chip
+                            key={cat.value}
+                            label={cat.label}
+                            size="small"
+                            sx={{
+                              backgroundColor: cat.color,
+                              color: 'white',
+                              fontSize: '0.65rem',
+                              height: '20px',
+                              margin: '2px',
+                            }}
+                          />
+                        );
+                      })}
+                    </Stack>
+                  </Box>
+                )}
+              </Paper>
             </Stack>
           </DialogContent>
 
           <DialogActions sx={{ p: 2 }}>
             <Button color="inherit" onClick={handleResetFilters}>
-              Reset Filters
+              Reset All Filters
             </Button>
             <Button variant="contained" onClick={handleShowResults}>
-              Show Results
+              Apply Filters
             </Button>
           </DialogActions>
         </Dialog>
