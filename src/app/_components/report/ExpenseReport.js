@@ -36,27 +36,8 @@ import dayjs from "dayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import RestaurantIcon from "@mui/icons-material/Restaurant";
-import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
-import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import LocalActivityIcon from "@mui/icons-material/LocalActivity";
-import ReceiptIcon from "@mui/icons-material/Receipt";
-import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
-import SchoolIcon from "@mui/icons-material/School";
-import CategoryIcon from "@mui/icons-material/Category";
 
-// Category configuration with colors and icons
-const CATEGORIES = [
-  { value: "food", label: "Food & Dining", color: "#FF6B6B", icon: <RestaurantIcon /> },
-  { value: "snacks", label: "Snacks", color: "#416b1a", icon: <RestaurantIcon /> },
-  { value: "transport", label: "Transportation", color: "#4ECDC4", icon: <DirectionsCarIcon /> },
-  { value: "shopping", label: "Shopping", color: "#FFD166", icon: <ShoppingCartIcon /> },
-  { value: "entertainment", label: "Entertainment", color: "#06D6A0", icon: <LocalActivityIcon /> },
-  { value: "bills", label: "Bills & Utilities", color: "#118AB2", icon: <ReceiptIcon /> },
-  { value: "health", label: "Health & Medical", color: "#EF476F", icon: <MedicalServicesIcon /> },
-  { value: "education", label: "Education", color: "#7209B7", icon: <SchoolIcon /> },
-  { value: "other", label: "Other", color: "#6C757D", icon: <CategoryIcon /> },
-];
+import CATEGORIES from "@/app/staticData/category";
 
 function ExpenseReport() {
   const [expenses, setExpenses] = useState([]);
@@ -113,29 +94,29 @@ function ExpenseReport() {
   // 🔹 Category summary data
   const categoryData = useMemo(() => {
     const categoryMap = {};
-    
+
     filteredExpenses.forEach((item) => {
       const category = item.category || "other";
       categoryMap[category] = (categoryMap[category] || 0) + item.amount;
     });
 
-    return CATEGORIES.map(cat => ({
+    return CATEGORIES.map((cat) => ({
       name: cat.label,
       value: categoryMap[cat.value] || 0,
       color: cat.color,
       icon: cat.icon,
-      percentage: 0 // Will calculate below
+      percentage: 0, // Will calculate below
     }))
-    .filter(item => item.value > 0)
-    .sort((a, b) => b.value - a.value);
+      .filter((item) => item.value > 0)
+      .sort((a, b) => b.value - a.value);
   }, [filteredExpenses]);
 
   // 🔹 Calculate percentages
   const categoryDataWithPercentages = useMemo(() => {
     const total = categoryData.reduce((sum, item) => sum + item.value, 0);
-    return categoryData.map(item => ({
+    return categoryData.map((item) => ({
       ...item,
-      percentage: total > 0 ? Math.round((item.value / total) * 100) : 0
+      percentage: total > 0 ? Math.round((item.value / total) * 100) : 0,
     }));
   }, [categoryData]);
 
@@ -157,28 +138,30 @@ function ExpenseReport() {
   // 🔹 Category bar chart data (by date)
   const categoryByDateData = useMemo(() => {
     const dateMap = {};
-    
+
     filteredExpenses.forEach((item) => {
       const dateKey = dayjs(item.date).format("DD MMM");
       const category = item.category || "other";
-      
+
       if (!dateMap[dateKey]) {
         dateMap[dateKey] = { date: dateKey };
       }
-      
-      dateMap[dateKey][category] = (dateMap[dateKey][category] || 0) + item.amount;
+
+      dateMap[dateKey][category] =
+        (dateMap[dateKey][category] || 0) + item.amount;
       dateMap[dateKey].total = (dateMap[dateKey].total || 0) + item.amount;
     });
 
-    return Object.values(dateMap).sort((a, b) => 
-      dayjs(a.date, "DD MMM").valueOf() - dayjs(b.date, "DD MMM").valueOf()
+    return Object.values(dateMap).sort(
+      (a, b) =>
+        dayjs(a.date, "DD MMM").valueOf() - dayjs(b.date, "DD MMM").valueOf(),
     );
   }, [filteredExpenses]);
 
   // 🔹 Top expenses by category (table data)
   const topExpensesByCategory = useMemo(() => {
     const categoryMap = {};
-    
+
     filteredExpenses.forEach((item) => {
       const category = item.category || "other";
       if (!categoryMap[category]) {
@@ -188,13 +171,13 @@ function ExpenseReport() {
           count: 0,
           avg: 0,
           max: 0,
-          maxExpenseName: ""
+          maxExpenseName: "",
         };
       }
-      
+
       categoryMap[category].total += item.amount;
       categoryMap[category].count += 1;
-      
+
       if (item.amount > categoryMap[category].max) {
         categoryMap[category].max = item.amount;
         categoryMap[category].maxExpenseName = item.expenseName;
@@ -202,15 +185,16 @@ function ExpenseReport() {
     });
 
     // Calculate averages
-    Object.values(categoryMap).forEach(cat => {
+    Object.values(categoryMap).forEach((cat) => {
       cat.avg = Math.round(cat.total / cat.count);
     });
 
     return Object.values(categoryMap)
       .sort((a, b) => b.total - a.total)
-      .map(cat => ({
+      .map((cat) => ({
         ...cat,
-        categoryLabel: CATEGORIES.find(c => c.value === cat.category)?.label || "Other"
+        categoryLabel:
+          CATEGORIES.find((c) => c.value === cat.category)?.label || "Other",
       }));
   }, [filteredExpenses]);
 
@@ -234,13 +218,7 @@ function ExpenseReport() {
       </Typography>
 
       {/* ⚡ Quick Filters */}
-      <Stack
-        direction="row"
-        spacing={1}
-        mb={2}
-        flexWrap="wrap"
-        useFlexGap
-      >
+      <Stack direction="row" spacing={1} mb={2} flexWrap="wrap" useFlexGap>
         <Button size="small" onClick={() => applyQuickFilter("today")}>
           Today
         </Button>
@@ -273,14 +251,14 @@ function ExpenseReport() {
 
       {/* 📊 View Mode Toggle */}
       <Stack direction="row" spacing={1} mb={3}>
-        <Button 
+        <Button
           variant={viewMode === "daily" ? "contained" : "outlined"}
           onClick={() => setViewMode("daily")}
           size="small"
         >
           Daily View
         </Button>
-        <Button 
+        <Button
           variant={viewMode === "category" ? "contained" : "outlined"}
           onClick={() => setViewMode("category")}
           size="small"
@@ -334,8 +312,11 @@ function ExpenseReport() {
                 Avg. Daily
               </Typography>
               <Typography variant="h5" fontWeight={600}>
-                ৳ {filteredExpenses.length > 0 
-                  ? Math.round(totalAmount / (dayjs(endDate).diff(startDate, 'day') + 1)) 
+                ৳{" "}
+                {filteredExpenses.length > 0
+                  ? Math.round(
+                      totalAmount / (dayjs(endDate).diff(startDate, "day") + 1),
+                    )
                   : 0}
               </Typography>
             </CardContent>
@@ -507,9 +488,14 @@ function ExpenseReport() {
             </TableHead>
             <TableBody>
               {topExpensesByCategory.map((row) => {
-                const percentage = totalAmount > 0 ? Math.round((row.total / totalAmount) * 100) : 0;
-                const categoryConfig = CATEGORIES.find(c => c.value === row.category);
-                
+                const percentage =
+                  totalAmount > 0
+                    ? Math.round((row.total / totalAmount) * 100)
+                    : 0;
+                const categoryConfig = CATEGORIES.find(
+                  (c) => c.value === row.category,
+                );
+
                 return (
                   <TableRow key={row.category}>
                     <TableCell>
@@ -518,8 +504,8 @@ function ExpenseReport() {
                           size="small"
                           label={row.categoryLabel}
                           sx={{
-                            bgcolor: categoryConfig?.color || '#6C757D',
-                            color: 'white',
+                            bgcolor: categoryConfig?.color || "#6C757D",
+                            color: "white",
                             fontWeight: 500,
                           }}
                         />
@@ -531,7 +517,9 @@ function ExpenseReport() {
                       </Typography>
                     </TableCell>
                     <TableCell align="right">{row.count}</TableCell>
-                    <TableCell align="right">৳ {row.avg.toLocaleString()}</TableCell>
+                    <TableCell align="right">
+                      ৳ {row.avg.toLocaleString()}
+                    </TableCell>
                     <TableCell align="right">
                       <Typography variant="body2" color="text.secondary">
                         {row.maxExpenseName}

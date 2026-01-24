@@ -40,17 +40,7 @@ import { groupExpensesByDate } from "../_components/expense/groupByDate";
 import Switch from "@mui/material/Switch";
 import Brightness4Icon from "@mui/icons-material/Brightness4";
 import LogoutIcon from "@mui/icons-material/Logout";
-
-// Import Material Icons for categories
-import RestaurantIcon from "@mui/icons-material/Restaurant";
-import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
-import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import LocalActivityIcon from "@mui/icons-material/LocalActivity";
-import ReceiptIcon from "@mui/icons-material/Receipt";
-import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
-import SchoolIcon from "@mui/icons-material/School";
-import CategoryIcon from "@mui/icons-material/Category";
-
+import  CATEGORIES  from "../staticData/category";
 import dayjs from "dayjs";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
@@ -60,20 +50,9 @@ dayjs.extend(isSameOrAfter);
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
+
 const FILTER_KEY = "expense_filters";
 
-// Enhanced categories with icons and colors
-const CATEGORIES = [
-  { value: "food", label: "Food & Dining", color: "#FF6B6B", icon: <RestaurantIcon /> },
-   { value: "snacks", label: "Snacks", color: "#416b1a", icon: <RestaurantIcon /> },
-  { value: "transport", label: "Transportation", color: "#4ECDC4", icon: <DirectionsCarIcon /> },
-  { value: "shopping", label: "Shopping", color: "#FFD166", icon: <ShoppingCartIcon /> },
-  { value: "entertainment", label: "Entertainment", color: "#06D6A0", icon: <LocalActivityIcon /> },
-  { value: "bills", label: "Bills & Utilities", color: "#118AB2", icon: <ReceiptIcon /> },
-  { value: "health", label: "Health & Medical", color: "#EF476F", icon: <MedicalServicesIcon /> },
-  { value: "education", label: "Education", color: "#7209B7", icon: <SchoolIcon /> },
-  { value: "other", label: "Other", color: "#6C757D", icon: <CategoryIcon /> },
-];
 
 export default function ExpensePage() {
   const [expenses, setExpenses] = useState([]);
@@ -111,12 +90,12 @@ export default function ExpensePage() {
       console.error(err);
     }
   };
-  
+
   const handleEdit = async (id, values) => {
     await axios.put(`/api/expense/${id}`, values);
     fetchExpenses(); // refetch or mutate
   };
-  
+
   useEffect(() => {
     const savedTheme = localStorage.getItem("darkMode");
     if (savedTheme) setDarkMode(savedTheme === "true");
@@ -165,7 +144,7 @@ export default function ExpensePage() {
     const today = dayjs();
     setActiveQuick(range);
     setSelectedCategories([]); // Reset categories when quick range is selected
-    
+
     if (range === "today") {
       setFromDate(today);
       setToDate(today);
@@ -200,7 +179,7 @@ export default function ExpensePage() {
     const matchesSearch = e.expenseName
       .toLowerCase()
       .includes(search.toLowerCase());
-    
+
     const expenseDate = dayjs(e.date).startOf("day");
     const from = fromDate ? dayjs(fromDate).startOf("day") : null;
     const to = toDate ? dayjs(toDate).startOf("day") : null;
@@ -219,11 +198,11 @@ export default function ExpensePage() {
 
   const groupedData = groupExpensesByDate(filteredExpenses);
   const sortedGroupedData = [...groupedData].sort(
-    (a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf()
+    (a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf(),
   );
-  
+
   const totalAmount = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
-  
+
   const handleResetFilters = () => {
     setSearch("");
     setFromDate(null);
@@ -233,7 +212,7 @@ export default function ExpensePage() {
     localStorage.removeItem(FILTER_KEY);
     setFilterOpen(false);
   };
-  
+
   const handleShowResults = () => {
     setFilterOpen(false);
   };
@@ -242,7 +221,7 @@ export default function ExpensePage() {
   const getFilterText = () => {
     if (!fromDate && !toDate && !search && selectedCategories.length === 0)
       return "All Records";
-    
+
     let text = "";
     if (fromDate || toDate) {
       text += `${fromDate ? dayjs(fromDate).format("MMM DD") : "Start"} - ${
@@ -252,7 +231,7 @@ export default function ExpensePage() {
     if (selectedCategories.length > 0) {
       if (text) text += " | ";
       const selectedLabels = selectedCategories.map(
-        cat => CATEGORIES.find(c => c.value === cat)?.label || cat
+        (cat) => CATEGORIES.find((c) => c.value === cat)?.label || cat,
       );
       if (selectedLabels.length <= 2) {
         text += `Categories: ${selectedLabels.join(", ")}`;
@@ -269,7 +248,10 @@ export default function ExpensePage() {
 
   // Helper to get category by value
   const getCategoryByValue = (value) => {
-    return CATEGORIES.find(cat => cat.value === value) || CATEGORIES[CATEGORIES.length - 1]; // Return "Other" if not found
+    return (
+      CATEGORIES.find((cat) => cat.value === value) ||
+      CATEGORIES[CATEGORIES.length - 1]
+    ); // Return "Other" if not found
   };
 
   const handleLogout = () => {
@@ -308,7 +290,10 @@ export default function ExpensePage() {
               }}
             >
               <FilterListIcon fontSize="small" />
-              {(search || fromDate || toDate || selectedCategories.length > 0) && (
+              {(search ||
+                fromDate ||
+                toDate ||
+                selectedCategories.length > 0) && (
                 <Box
                   sx={{
                     position: "absolute",
@@ -486,7 +471,12 @@ export default function ExpensePage() {
 
               {/* Category Filter */}
               <Box>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                <Box
+                  display="flex"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  mb={1}
+                >
                   <Typography variant="subtitle2" fontWeight="600">
                     Categories
                   </Typography>
@@ -501,7 +491,9 @@ export default function ExpensePage() {
                 </Box>
                 <Stack direction="row" gap={1} flexWrap="wrap">
                   {CATEGORIES.map((category) => {
-                    const isSelected = selectedCategories.includes(category.value);
+                    const isSelected = selectedCategories.includes(
+                      category.value,
+                    );
                     return (
                       <Chip
                         key={category.value}
@@ -510,14 +502,18 @@ export default function ExpensePage() {
                         clickable
                         onClick={() => handleCategoryToggle(category.value)}
                         sx={{
-                          backgroundColor: isSelected ? category.color : 'transparent',
-                          color: isSelected ? 'white' : 'inherit',
+                          backgroundColor: isSelected
+                            ? category.color
+                            : "transparent",
+                          color: isSelected ? "white" : "inherit",
                           border: `1px solid ${category.color}`,
-                          '& .MuiChip-icon': {
-                            color: isSelected ? 'white' : category.color,
+                          "& .MuiChip-icon": {
+                            color: isSelected ? "white" : category.color,
                           },
-                          '&:hover': {
-                            backgroundColor: isSelected ? category.color : `${category.color}20`,
+                          "&:hover": {
+                            backgroundColor: isSelected
+                              ? category.color
+                              : `${category.color}20`,
                           },
                         }}
                       />
@@ -525,8 +521,13 @@ export default function ExpensePage() {
                   })}
                 </Stack>
                 {selectedCategories.length > 0 && (
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                    Selected: {selectedCategories.length} of {CATEGORIES.length} categories
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ mt: 1, display: "block" }}
+                  >
+                    Selected: {selectedCategories.length} of {CATEGORIES.length}{" "}
+                    categories
                   </Typography>
                 )}
               </Box>
@@ -551,10 +552,15 @@ export default function ExpensePage() {
                 {selectedCategories.length > 0 && (
                   <Box mt={1}>
                     <Typography variant="caption" color="text.secondary">
-                      Showing expenses from {selectedCategories.length}{" "}
-                      categor{selectedCategories.length === 1 ? "y" : "ies"}
+                      Showing expenses from {selectedCategories.length} categor
+                      {selectedCategories.length === 1 ? "y" : "ies"}
                     </Typography>
-                    <Stack direction="row" spacing={0.5} flexWrap="wrap" mt={0.5}>
+                    <Stack
+                      direction="row"
+                      spacing={0.5}
+                      flexWrap="wrap"
+                      mt={0.5}
+                    >
                       {selectedCategories.map((catValue) => {
                         const cat = getCategoryByValue(catValue);
                         return (
@@ -564,10 +570,10 @@ export default function ExpensePage() {
                             size="small"
                             sx={{
                               backgroundColor: cat.color,
-                              color: 'white',
-                              fontSize: '0.65rem',
-                              height: '20px',
-                              margin: '2px',
+                              color: "white",
+                              fontSize: "0.65rem",
+                              height: "20px",
+                              margin: "2px",
                             }}
                           />
                         );

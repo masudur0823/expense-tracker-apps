@@ -24,23 +24,15 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import dayjs from "dayjs";
 import { useState, useMemo } from "react";
+import CATEGORIES from "../../staticData/category";
 
 // Define your categories - you might want to move this to a config file
-const CATEGORIES = [
-  { value: "food", label: "Food" },
-  { value: "transport", label: "Transportation" },
-  { value: "shopping", label: "Shopping" },
-  { value: "entertainment", label: "Entertainment" },
-  { value: "bills", label: "Bills & Utilities" },
-  { value: "health", label: "Health & Medical" },
-  { value: "education", label: "Education" },
-  { value: "other", label: "Other" },
-];
+// Category configuration with colors and icons
 
 export default function ExpenseDateCard({ data, onDelete, onEdit }) {
   const [showActions, setShowActions] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
-  
+
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -58,7 +50,7 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
 
   const sortedItems = useMemo(() => {
     return [...(data.items || [])].sort(
-      (a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf()
+      (a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf(),
     );
   }, [data.items]);
 
@@ -82,10 +74,10 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
 
   const openEditModal = (item) => {
     setEditingItem(item);
-    setEditValues({ 
-      expenseName: item.expenseName, 
+    setEditValues({
+      expenseName: item.expenseName,
       amount: item.amount,
-      category: item.category || "" // Use existing category or empty string
+      category: item.category || "", // Use existing category or empty string
     });
     setModalOpen(true);
   };
@@ -98,7 +90,7 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
 
   const saveEdit = async () => {
     if (!editingItem) return;
-    
+
     setSaving(true);
     await onEdit(editingItem.id, editValues);
     setSaving(false);
@@ -107,7 +99,7 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
 
   // Handle key press for modal (Enter to save, Escape to cancel)
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       saveEdit();
     }
@@ -233,7 +225,8 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
                           fontSize: 9,
                         }}
                       >
-                        {CATEGORIES.find(c => c.value === item.category)?.label || item.category}
+                        {CATEGORIES.find((c) => c.value === item.category)
+                          ?.label || item.category}
                       </Typography>
                     )}
                   </Box>
@@ -262,10 +255,7 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
                           {deletingId === item.id ? (
                             <CircularProgress size={16} />
                           ) : (
-                            <DeleteOutlineIcon
-                              color="error"
-                              fontSize="small"
-                            />
+                            <DeleteOutlineIcon color="error" fontSize="small" />
                           )}
                         </IconButton>
                       </Stack>
@@ -290,17 +280,16 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
       </Card>
 
       {/* Edit Modal */}
-      <Dialog 
-        open={modalOpen} 
-        onClose={closeModal}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={modalOpen} onClose={closeModal} maxWidth="sm" fullWidth>
         <DialogTitle>
           Edit Expense
           {editingItem && (
-            <Typography variant="caption" color="text.secondary" display="block">
-              {dayjs(editingItem.createdAt).format('MMM D, YYYY h:mm A')}
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              display="block"
+            >
+              {dayjs(editingItem.createdAt).format("MMM D, YYYY h:mm A")}
             </Typography>
           )}
         </DialogTitle>
@@ -319,7 +308,7 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
               }
               variant="outlined"
             />
-            
+
             <FormControl fullWidth>
               <InputLabel>Category</InputLabel>
               <Select
@@ -339,7 +328,7 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
                 ))}
               </Select>
             </FormControl>
-            
+
             <TextField
               label="Amount (tk)"
               type="number"
@@ -359,13 +348,13 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
           <Button onClick={closeModal} disabled={saving}>
             Cancel
           </Button>
-          <Button 
-            onClick={saveEdit} 
-            variant="contained" 
+          <Button
+            onClick={saveEdit}
+            variant="contained"
             disabled={saving || !editValues.expenseName || !editValues.amount}
             startIcon={saving ? <CircularProgress size={16} /> : null}
           >
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? "Saving..." : "Save Changes"}
           </Button>
         </DialogActions>
       </Dialog>
