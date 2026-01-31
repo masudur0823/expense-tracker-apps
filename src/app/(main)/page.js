@@ -68,8 +68,8 @@ export default function ExpensePage() {
   const [selectedCategories, setSelectedCategories] = useState([]);
 
   // Default to null or specific range if you prefer
-  const [fromDate, setFromDate] = useState();
-  const [toDate, setToDate] = useState();
+  const [fromDate, setFromDate] = useState(dayjs().startOf("month"));
+  const [toDate, setToDate] = useState(dayjs().endOf("month"));
 
   const fetchExpenses = async () => {
     try {
@@ -290,7 +290,7 @@ export default function ExpensePage() {
               }}
             >
               <FilterListIcon fontSize="small" />
-              {(search ||
+              {/* {(search ||
                 fromDate ||
                 toDate ||
                 selectedCategories.length > 0) && (
@@ -305,7 +305,7 @@ export default function ExpensePage() {
                     borderRadius: "50%",
                   }}
                 />
-              )}
+              )} */}
             </IconButton>
             <AddExpenseButton onClick={() => setOpen(true)} />
           </Stack>
