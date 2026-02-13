@@ -25,9 +25,27 @@ export const parseExpenses = (text) => {
       return;
     }
 
+    // Extract category from the name (format: @category)
+    let expenseName = name.trim();
+    let category = null;
+    
+    // Check for @category in the name
+    const categoryMatch = expenseName.match(/@(\w+)/);
+    if (categoryMatch) {
+      category = categoryMatch[1]; // Extract the category value
+      // Remove the @category from the expense name
+      expenseName = expenseName.replace(/@\w+\s*/, '').trim();
+      
+      // If after removing @category, the name is empty, use a default
+      if (!expenseName) {
+        expenseName = "Expense";
+      }
+    }
+
     expenses.push({
-      expenseName: name.trim(),
+      expenseName: expenseName,
       amount: num,
+      ...(category && { category }), // Only add category if it exists
     });
   });
 
