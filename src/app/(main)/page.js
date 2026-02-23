@@ -20,27 +20,14 @@ import {
   IconButton,
   Chip,
 } from "@mui/material";
-import Avatar from "@mui/material/Avatar";
 import SearchIcon from "@mui/icons-material/Search";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import CloseIcon from "@mui/icons-material/Close";
-import MenuIcon from "@mui/icons-material/Menu";
-import SettingsIcon from "@mui/icons-material/Settings";
-import ReportIcon from "@mui/icons-material/Report";
-import Drawer from "@mui/material/Drawer";
-import List from "@mui/material/List";
-import ListItemButton from "@mui/material/ListItemButton";
-import ListItemIcon from "@mui/material/ListItemIcon";
-import ListItemText from "@mui/material/ListItemText";
-import { useRouter } from "next/navigation";
 import AddExpenseButton from "../_components/expense/AddExpenseButton";
 import ExpenseDateCard from "../_components/expense/ExpenseDateCard";
 import AddExpenseModal from "../_components/AddExpenseModal";
 import { groupExpensesByDate } from "../_components/expense/groupByDate";
-import Switch from "@mui/material/Switch";
-import Brightness4Icon from "@mui/icons-material/Brightness4";
-import LogoutIcon from "@mui/icons-material/Logout";
-import  CATEGORIES  from "../staticData/category";
+import CATEGORIES from "../staticData/category";
 import dayjs from "dayjs";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
@@ -50,9 +37,7 @@ dayjs.extend(isSameOrAfter);
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
-
 const FILTER_KEY = "expense_filters";
-
 
 export default function ExpensePage() {
   const [expenses, setExpenses] = useState([]);
@@ -62,9 +47,6 @@ export default function ExpensePage() {
   const [search, setSearch] = useState("");
   const isHydrated = useRef(false);
   const [activeQuick, setActiveQuick] = useState(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const router = useRouter();
-  const [darkMode, setDarkMode] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState([]);
 
   // Default to null or specific range if you prefer
@@ -96,14 +78,7 @@ export default function ExpensePage() {
     fetchExpenses(); // refetch or mutate
   };
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("darkMode");
-    if (savedTheme) setDarkMode(savedTheme === "true");
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("darkMode", darkMode);
-  }, [darkMode]);
+ 
 
   useEffect(() => {
     const saved = localStorage.getItem(FILTER_KEY);
@@ -254,10 +229,7 @@ export default function ExpensePage() {
     ); // Return "Other" if not found
   };
 
-  const handleLogout = () => {
-    localStorage.clear(); // or remove token only
-    router.push("/login");
-  };
+
 
   return (
     <>
@@ -270,10 +242,6 @@ export default function ExpensePage() {
           mt={2}
         >
           <Box display="flex" alignItems="center" gap={1}>
-            <IconButton size="small" onClick={() => setDrawerOpen(true)}>
-              <MenuIcon />
-            </IconButton>
-
             <Typography variant="h6" fontWeight="700" color="primary">
               Expenses
             </Typography>
@@ -603,71 +571,6 @@ export default function ExpensePage() {
           }}
         />
       </Container>
-
-      <Drawer
-        anchor="left"
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-      >
-        <Box sx={{ width: 260 }}>
-          <Box sx={{ p: 2, display: "flex", alignItems: "center", gap: 1 }}>
-            <Avatar sx={{ bgcolor: "primary.main" }}>U</Avatar>
-            <Box>
-              <Typography fontWeight={600}>User Name</Typography>
-              <Typography variant="caption" color="text.secondary">
-                user@email.com
-              </Typography>
-            </Box>
-          </Box>
-
-          <Divider />
-
-          <List>
-            <ListItemButton
-              onClick={() => {
-                setDrawerOpen(false);
-                router.push("/report");
-              }}
-            >
-              <ListItemIcon>
-                <ReportIcon />
-              </ListItemIcon>
-              <ListItemText primary="Report" />
-            </ListItemButton>
-            <ListItemButton
-              onClick={() => {
-                setDrawerOpen(false);
-                router.push("/settings");
-              }}
-            >
-              <ListItemIcon>
-                <SettingsIcon />
-              </ListItemIcon>
-              <ListItemText primary="Settings" />
-            </ListItemButton>
-            <ListItemButton>
-              <ListItemIcon>
-                <Brightness4Icon />
-              </ListItemIcon>
-              <ListItemText primary="Dark Mode" />
-              <Switch
-                edge="end"
-                checked={darkMode}
-                onChange={() => setDarkMode(!darkMode)}
-              />
-            </ListItemButton>
-            <ListItemButton onClick={handleLogout}>
-              <ListItemIcon>
-                <LogoutIcon color="error" />
-              </ListItemIcon>
-              <ListItemText
-                primary="Logout"
-                primaryTypographyProps={{ color: "error" }}
-              />
-            </ListItemButton>
-          </List>
-        </Box>
-      </Drawer>
     </>
   );
 }

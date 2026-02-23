@@ -64,6 +64,13 @@ const CATEGORIES = [
   },
 
   {
+    value: "grocery",
+    label: "Grocery",
+    color: "#7209B7",
+    icon: <ShoppingCartIcon />,
+  },
+
+  {
     value: "care",
     label: "Personal Care",
     color: "#01467e",
@@ -83,7 +90,14 @@ const CATEGORIES = [
     color: "#7209B7",
     icon: <SchoolIcon />,
   },
+  {
+    value: "sorkarbari",
+    label: "Sorkar Bari",
+    color: "#1d5a4a",
+    icon: <HomeIcon />,
+  },
   { value: "other", label: "Other", color: "#6C757D", icon: <CategoryIcon /> },
+   
 ];
 
 export default CATEGORIES;
