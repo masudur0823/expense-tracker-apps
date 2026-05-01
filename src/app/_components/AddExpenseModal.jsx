@@ -1,10 +1,8 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import axios from "axios";
 import {
   Dialog,
-  AppBar,
-  Toolbar,
   IconButton,
   Typography,
   Box,
@@ -13,7 +11,6 @@ import {
   useMediaQuery,
   Slide,
   Paper,
-  Alert,
   Stack,
   CircularProgress,
   DialogContent,
@@ -24,9 +21,11 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
+  Chip,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import { useTheme } from "@mui/material/styles";
 import { parseExpenses } from "./expense/utils";
 import dayjs from "dayjs";
@@ -37,14 +36,20 @@ import CATEGORIES from "../staticData/category";
 
 const Transition = (props) => <Slide direction="up" {...props} />;
 
+const FORMAT_EXAMPLES = [
+  { text: "Lunch at Subway - 150", note: "name — amount" },
+  { text: "Grocery - 450 @food", note: "with category" },
+  { text: "Taxi - 80 @transport", note: "" },
+];
+
 export default function AddExpenseModal({ open, onClose }) {
   const [text, setText] = useState("");
   const [errors, setErrors] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [date, setDate] = useState(dayjs());
-  
-  // Category popup state
+  const [showGuide, setShowGuide] = useState(false);
+
   const [showCategoryPopup, setShowCategoryPopup] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
   const [filteredCategories, setFilteredCategories] = useState(CATEGORIES);
@@ -62,29 +67,22 @@ export default function AddExpenseModal({ open, onClose }) {
     setTotal(totalAmount);
   };
 
-  // Handle text selection and @ detection
   const handleTextChange = (e) => {
     const newText = e.target.value;
     const cursorPos = e.target.selectionStart;
     setCursorPosition(cursorPos);
-    
-    // Check if we should show category popup
     const textBeforeCursor = newText.substring(0, cursorPos);
-    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
-    
+    const lastAtIndex = textBeforeCursor.lastIndexOf("@");
     if (lastAtIndex !== -1) {
-      // Check if we're in the middle of typing a category after @
       const afterAt = textBeforeCursor.substring(lastAtIndex + 1);
-      
-      // Don't show popup if there's a space after @ (unless it's part of category name)
-      if (afterAt.includes(' ') && !afterAt.includes('@')) {
+      if (afterAt.includes(" ") && !afterAt.includes("@")) {
         setShowCategoryPopup(false);
       } else {
-        // Filter categories based on what's typed after @
         const searchTerm = afterAt.toLowerCase();
-        const filtered = CATEGORIES.filter(cat => 
-          cat.label.toLowerCase().includes(searchTerm) ||
-          cat.value.toLowerCase().includes(searchTerm)
+        const filtered = CATEGORIES.filter(
+          (cat) =>
+            cat.label.toLowerCase().includes(searchTerm) ||
+            cat.value.toLowerCase().includes(searchTerm)
         );
         setFilteredCategories(filtered);
         setSelectedCategoryIndex(0);
@@ -93,87 +91,60 @@ export default function AddExpenseModal({ open, onClose }) {
     } else {
       setShowCategoryPopup(false);
     }
-    
     handleChange(newText);
   };
 
-  // Handle category selection
   const handleCategorySelect = (category) => {
     const beforeAt = text.substring(0, cursorPosition);
     const afterAt = text.substring(cursorPosition);
-    
-    // Find where @ is and replace everything after it until space or end with category
-    const lastAtIndex = beforeAt.lastIndexOf('@');
-    const newText = text.substring(0, lastAtIndex) + '@' + category.value + ' ' + afterAt;
-    
+    const lastAtIndex = beforeAt.lastIndexOf("@");
+    const newText =
+      text.substring(0, lastAtIndex) + "@" + category.value + " " + afterAt;
     setText(newText);
     setShowCategoryPopup(false);
-    
-    // Focus back on text field after selection
     if (textFieldRef.current) {
-      const newCursorPos = lastAtIndex + category.value.length + 2; // +2 for @ and space
+      const newCursorPos = lastAtIndex + category.value.length + 2;
       textFieldRef.current.focus();
       textFieldRef.current.setSelectionRange(newCursorPos, newCursorPos);
     }
-    
     handleChange(newText);
   };
 
-  // Handle keyboard navigation in category popup
   const handleKeyDown = (e) => {
     if (showCategoryPopup) {
       switch (e.key) {
-        case 'ArrowDown':
+        case "ArrowDown":
           e.preventDefault();
-          setSelectedCategoryIndex((prev) => 
+          setSelectedCategoryIndex((prev) =>
             prev < filteredCategories.length - 1 ? prev + 1 : prev
           );
           break;
-        case 'ArrowUp':
+        case "ArrowUp":
           e.preventDefault();
           setSelectedCategoryIndex((prev) => (prev > 0 ? prev - 1 : prev));
           break;
-        case 'Enter':
+        case "Enter":
           e.preventDefault();
-          if (filteredCategories.length > 0) {
+          if (filteredCategories.length > 0)
             handleCategorySelect(filteredCategories[selectedCategoryIndex]);
-          }
           break;
-        case 'Escape':
+        case "Escape":
           setShowCategoryPopup(false);
           break;
       }
     }
   };
 
-  // Close popup when clicking outside
-  const handleClickAway = () => {
-    setShowCategoryPopup(false);
-  };
-
   const handleSubmit = async () => {
     const { expenses, errors: parseErrors } = parseExpenses(text);
-
     if (parseErrors.length > 0) return;
-
     const payload =
       expenses.length === 0
-        ? {
-            date: date.format("YYYY-MM-DD"),
-            expensesName: "No Expense",
-            amount: 0,
-          }
-        : {
-            expenses: expenses.map((exp) => ({
-              ...exp,
-              date: date.format("YYYY-MM-DD"),
-            })),
-          };
-
+        ? { date: date.format("YYYY-MM-DD"), expensesName: "No Expense", amount: 0 }
+        : { expenses: expenses.map((exp) => ({ ...exp, date: date.format("YYYY-MM-DD") })) };
     try {
       setLoading(true);
       await axios.post("/api/expense", payload);
-
       setText("");
       setErrors([]);
       setTotal(0);
@@ -187,6 +158,8 @@ export default function AddExpenseModal({ open, onClose }) {
     }
   };
 
+  const lineCount = text.split("\n").filter((l) => l.trim()).length;
+
   return (
     <Dialog
       open={open}
@@ -196,240 +169,424 @@ export default function AddExpenseModal({ open, onClose }) {
       maxWidth="sm"
       TransitionComponent={Transition}
       PaperProps={{
-        sx: { borderRadius: isMobile ? 0 : 3, bgcolor: "#fcfcfc" },
+        sx: {
+          borderRadius: isMobile ? 0 : "16px",
+          bgcolor: "#F8F7F4",
+          boxShadow: "0 24px 60px rgba(0,0,0,0.12)",
+          overflow: "hidden",
+        },
       }}
     >
-      {/* Header */}
-      <AppBar
-        position="sticky"
-        elevation={0}
+      {/* ── Header ── */}
+      <Box
         sx={{
-          bgcolor: "background.paper",
-          borderBottom: "1px solid",
-          borderColor: "divider",
-          color: "text.primary",
+          bgcolor: "#fff",
+          borderBottom: "1px solid #ECEAE4",
+          px: 2.5,
+          py: 1.6,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexShrink: 0,
         }}
       >
-        <Toolbar>
+        <Box display="flex" alignItems="center" gap={1.25}>
           <IconButton
-            edge="start"
-            onClick={onClose}
             size="small"
-            sx={{ mr: 1 }}
+            onClick={onClose}
+            sx={{
+              color: "#aaa",
+              borderRadius: "7px",
+              p: "4px",
+              "&:hover": { bgcolor: "#F0EDE6", color: "#1A1A2E" },
+            }}
           >
-            <CloseIcon fontSize="small" />
+            <CloseIcon sx={{ fontSize: 18 }} />
           </IconButton>
-          <Typography variant="subtitle1" fontWeight={700} sx={{ flexGrow: 1 }}>
-            Quick Add Expenses
+          <Typography
+            sx={{
+              fontFamily: "Georgia, serif",
+              fontSize: "1rem",
+              fontWeight: 400,
+              color: "#1A1A2E",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            Add expenses
           </Typography>
-          {!isMobile && (
-            <Button
-              variant="contained"
-              disableElevation
-              onClick={handleSubmit}
-              disabled={errors.length > 0 || loading}
-              sx={{ borderRadius: 2, px: 3 }}
-            >
-              {loading ? (
-                <CircularProgress size={24} color="inherit" />
-              ) : (
-                "Save"
-              )}
-            </Button>
-          )}
-        </Toolbar>
-      </AppBar>
+        </Box>
 
-      <DialogContent sx={{ p: isMobile ? 2 : 4 }}>
-        <Stack spacing={3}>
-          {/* Date Picker Section */}
-          <Box>
-            <Typography
-              variant="caption"
-              fontWeight={700}
-              color="text.secondary"
-              sx={{ mb: 1, display: "block" }}
-            >
-              TRANSACTION DATE
-            </Typography>
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <DatePicker
-                value={date}
-                format="DD-MM-YYYY"
-                onChange={(newValue) => setDate(newValue)}
-                slotProps={{
-                  textField: {
-                    fullWidth: true,
-                    size: "small",
-                    sx: { bgcolor: "white" },
-                  },
-                }}
-              />
-            </LocalizationProvider>
-          </Box>
+        {!isMobile && (
+          <Button
+            onClick={handleSubmit}
+            disabled={errors.length > 0 || loading}
+            sx={{
+              bgcolor: "#1A1A2E",
+              color: "#fff",
+              textTransform: "none",
+              fontSize: "0.82rem",
+              fontWeight: 500,
+              borderRadius: "8px",
+              px: 2.5,
+              py: 0.7,
+              boxShadow: "none",
+              "&:hover": { bgcolor: "#2E2E4A", boxShadow: "none" },
+              "&.Mui-disabled": { bgcolor: "#D0CEC8", color: "#fff" },
+            }}
+          >
+            {loading ? (
+              <CircularProgress size={14} sx={{ color: "#fff" }} />
+            ) : total > 0 ? (
+              `Save · ${total.toLocaleString()} BDT`
+            ) : (
+              "Save"
+            )}
+          </Button>
+        )}
+      </Box>
 
-          {/* Input Section with Category Popup */}
-          <Box ref={popupAnchorRef}>
-            <Box display="flex" justifyContent="space-between" mb={1}>
-              <Typography
-                variant="caption"
-                fontWeight={700}
-                color="text.secondary"
-              >
-                EXPENSE DETAILS
-              </Typography>
-              <Box
-                display="flex"
-                alignItems="center"
-                gap={0.5}
-                sx={{ color: "primary.main", cursor: "pointer" }}
-              >
-                <HelpOutlineIcon sx={{ fontSize: 14 }} />
-                <Typography variant="caption" fontWeight={600}>
-                  Format Guide
-                </Typography>
-              </Box>
-            </Box>
+      <DialogContent sx={{ p: isMobile ? 2 : 2.5, display: "flex", flexDirection: "column", gap: 2 }}>
 
-            <Box sx={{ position: "relative" }}>
-              <TextField
-                multiline
-                rows={isMobile ? 12 : 8}
-                fullWidth
-                autoFocus
-                value={text}
-                inputRef={textFieldRef}
-                placeholder={`Example:\nLunch at Subway - 15\nGrocery - 45.50\nTaxi - 10\n\nTip: Type @ to add category`}
-                onChange={handleTextChange}
-                onKeyDown={handleKeyDown}
-                onClick={(e) => {
-                  setCursorPosition(e.target.selectionStart);
-                }}
-                onSelect={(e) => {
-                  setCursorPosition(e.target.selectionStart);
-                }}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    bgcolor: "white",
-                    fontFamily: "monospace",
-                    fontSize: "0.9rem",
-                    borderRadius: 2,
-                  },
-                }}
-              />
-              
-              {/* Category Popup */}
-              <Popper
-                open={showCategoryPopup && filteredCategories.length > 0}
-                anchorEl={popupAnchorRef.current}
-                placement="bottom-start"
-                transition
-                style={{ zIndex: 1300, width: 250 }}
-                modifiers={[
-                  {
-                    name: 'offset',
-                    options: {
-                      offset: [0, 8],
+        {/* ── Date row ── */}
+        <Box
+          sx={{
+            bgcolor: "#fff",
+            border: "1px solid #ECEAE4",
+            borderRadius: "10px",
+            p: 2,
+          }}
+        >
+          <Typography
+            sx={{
+              fontSize: "0.62rem",
+              fontWeight: 700,
+              color: "#bbb",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              mb: 1.25,
+            }}
+          >
+            Transaction date
+          </Typography>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <DatePicker
+              value={date}
+              format="DD MMM YYYY"
+              onChange={(v) => setDate(v)}
+              slotProps={{
+                textField: {
+                  fullWidth: true,
+                  size: "small",
+                  sx: {
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "8px",
+                      bgcolor: "#FAFAF8",
+                      fontSize: "0.88rem",
                     },
                   },
-                ]}
+                },
+              }}
+            />
+          </LocalizationProvider>
+        </Box>
+
+        {/* ── Input section ── */}
+        <Box
+          sx={{
+            bgcolor: "#fff",
+            border: "1px solid #ECEAE4",
+            borderRadius: "10px",
+            p: 2,
+            flex: 1,
+          }}
+        >
+          {/* Section label row */}
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.25}>
+            <Typography
+              sx={{
+                fontSize: "0.62rem",
+                fontWeight: 700,
+                color: "#bbb",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+              }}
+            >
+              Expense details
+            </Typography>
+            <Box
+              display="flex"
+              alignItems="center"
+              gap={0.5}
+              onClick={() => setShowGuide((p) => !p)}
+              sx={{ cursor: "pointer", color: showGuide ? "#1A1A2E" : "#bbb", "&:hover": { color: "#1A1A2E" } }}
+            >
+              <InfoOutlinedIcon sx={{ fontSize: 14 }} />
+              <Typography sx={{ fontSize: "0.68rem", fontWeight: 600 }}>
+                Format guide
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* Format guide */}
+          {showGuide && (
+            <Box
+              sx={{
+                bgcolor: "#F8F7F4",
+                border: "1px solid #ECEAE4",
+                borderRadius: "8px",
+                p: 1.5,
+                mb: 1.5,
+              }}
+            >
+              <Typography
+                sx={{ fontSize: "0.68rem", color: "#999", mb: 1, fontWeight: 500 }}
               >
-                {({ TransitionProps }) => (
-                  <Grow {...TransitionProps} timeout={350}>
-                    <Paper elevation={3} sx={{ borderRadius: 2, overflow: 'hidden' }}>
-                      <ClickAwayListener onClickAway={handleClickAway}>
-                        <MenuList>
-                          {filteredCategories.map((category, index) => (
+                One expense per line — <span style={{ fontFamily: "monospace" }}>name - amount @category</span>
+              </Typography>
+              {FORMAT_EXAMPLES.map((ex) => (
+                <Box key={ex.text} display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                  <Typography
+                    sx={{
+                      fontFamily: "monospace",
+                      fontSize: "0.75rem",
+                      color: "#1A1A2E",
+                      bgcolor: "#ECEAE4",
+                      px: 1,
+                      py: 0.25,
+                      borderRadius: "4px",
+                    }}
+                  >
+                    {ex.text}
+                  </Typography>
+                  {ex.note && (
+                    <Typography sx={{ fontSize: "0.65rem", color: "#bbb" }}>{ex.note}</Typography>
+                  )}
+                </Box>
+              ))}
+              <Typography sx={{ fontSize: "0.65rem", color: "#bbb", mt: 1 }}>
+                Type <span style={{ fontFamily: "monospace", color: "#1A1A2E" }}>@</span> to pick a category
+              </Typography>
+            </Box>
+          )}
+
+          {/* Textarea + category popup */}
+          <Box ref={popupAnchorRef} sx={{ position: "relative" }}>
+            <TextField
+              multiline
+              rows={isMobile ? 10 : 7}
+              fullWidth
+              autoFocus
+              value={text}
+              inputRef={textFieldRef}
+              placeholder={"Lunch - 150 @food\nGrocery - 450\nTaxi - 80 @transport"}
+              onChange={handleTextChange}
+              onKeyDown={handleKeyDown}
+              onClick={(e) => setCursorPosition(e.target.selectionStart)}
+              onSelect={(e) => setCursorPosition(e.target.selectionStart)}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  bgcolor: "#FAFAF8",
+                  fontFamily: "'Fira Code', 'Courier New', monospace",
+                  fontSize: "0.85rem",
+                  lineHeight: 1.75,
+                  borderRadius: "8px",
+                  color: "#1A1A2E",
+                  "& fieldset": { borderColor: "#ECEAE4" },
+                  "&:hover fieldset": { borderColor: "#C8C5BE" },
+                  "&.Mui-focused fieldset": { borderColor: "#1A1A2E", borderWidth: "1.5px" },
+                },
+              }}
+            />
+
+            {/* Category popup */}
+            <Popper
+              open={showCategoryPopup && filteredCategories.length > 0}
+              anchorEl={popupAnchorRef.current}
+              placement="bottom-start"
+              transition
+              style={{ zIndex: 1400, width: 220 }}
+              modifiers={[{ name: "offset", options: { offset: [0, 6] } }]}
+            >
+              {({ TransitionProps }) => (
+                <Grow {...TransitionProps} timeout={180}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      border: "1px solid #ECEAE4",
+                      borderRadius: "10px",
+                      overflow: "hidden",
+                      bgcolor: "#fff",
+                    }}
+                  >
+                    <ClickAwayListener onClickAway={() => setShowCategoryPopup(false)}>
+                      <Box>
+                        <Box sx={{ px: 1.5, py: 0.75, borderBottom: "1px solid #F2F0EB" }}>
+                          <Typography sx={{ fontSize: "0.6rem", fontWeight: 700, color: "#bbb", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                            Categories
+                          </Typography>
+                        </Box>
+                        <MenuList dense sx={{ py: 0.5 }}>
+                          {filteredCategories.map((cat, index) => (
                             <MenuItem
-                              key={category.value}
-                              onClick={() => handleCategorySelect(category)}
+                              key={cat.value}
+                              onClick={() => handleCategorySelect(cat)}
                               selected={index === selectedCategoryIndex}
                               sx={{
-                                '&:hover': {
-                                  bgcolor: `${category.color}15`,
-                                },
-                                '&.Mui-selected': {
-                                  bgcolor: `${category.color}25`,
-                                  '&:hover': {
-                                    bgcolor: `${category.color}35`,
-                                  },
+                                borderRadius: "6px",
+                                mx: 0.5,
+                                px: 1,
+                                py: 0.6,
+                                minHeight: 0,
+                                "&:hover": { bgcolor: `${cat.color}12` },
+                                "&.Mui-selected": {
+                                  bgcolor: `${cat.color}20`,
+                                  "&:hover": { bgcolor: `${cat.color}28` },
                                 },
                               }}
                             >
-                              <ListItemIcon sx={{ color: category.color, minWidth: 36 }}>
-                                {category.icon}
+                              <ListItemIcon
+                                sx={{
+                                  color: cat.color,
+                                  minWidth: 28,
+                                  "& svg": { fontSize: "14px !important" },
+                                }}
+                              >
+                                {cat.icon}
                               </ListItemIcon>
-                              <ListItemText primary={category.label} />
+                              <ListItemText
+                                primary={cat.label}
+                                primaryTypographyProps={{
+                                  fontSize: "0.78rem",
+                                  fontWeight: 500,
+                                  color: "#1A1A2E",
+                                }}
+                                secondary={`@${cat.value}`}
+                                secondaryTypographyProps={{
+                                  fontSize: "0.62rem",
+                                  color: "#bbb",
+                                  fontFamily: "monospace",
+                                }}
+                              />
                             </MenuItem>
                           ))}
                         </MenuList>
-                      </ClickAwayListener>
-                    </Paper>
-                  </Grow>
-                )}
-              </Popper>
-            </Box>
-
-            <Typography variant="caption" color="text.secondary">
-              Leave empty and save to mark this date as “No Expense”
-            </Typography>
+                      </Box>
+                    </ClickAwayListener>
+                  </Paper>
+                </Grow>
+              )}
+            </Popper>
           </Box>
 
-          {/* Error Display */}
-          {errors.length > 0 && (
-            <Alert severity="error" variant="outlined" sx={{ borderRadius: 2 }}>
-              <Typography variant="caption" fontWeight={600}>
-                Please fix {errors.length} formatting issues:
-              </Typography>
-              {errors.slice(0, 3).map((e) => (
-                <Typography key={e.line} variant="caption" display="block">
-                  • Line {e.line}: {e.error}
-                </Typography>
-              ))}
-            </Alert>
-          )}
+          {/* Hint */}
+          <Typography sx={{ fontSize: "0.65rem", color: "#bbb", mt: 1 }}>
+            {text.trim()
+              ? `${lineCount} line${lineCount !== 1 ? "s" : ""} · leave empty to mark as no expense`
+              : "Leave empty to mark this date as no expense"}
+          </Typography>
+        </Box>
 
-          {/* Total Preview Paper */}
-          <Paper
-            elevation={0}
+        {/* ── Errors ── */}
+        {errors.length > 0 && (
+          <Box
             sx={{
-              p: 1,
-              bgcolor: "primary.dark",
-              color: "primary.contrastText",
-              borderRadius: 2,
+              bgcolor: "#FCEBEB",
+              border: "1px solid #F7C1C1",
+              borderRadius: "10px",
+              p: 1.5,
+            }}
+          >
+            <Box display="flex" alignItems="center" gap={0.75} mb={0.75}>
+              <WarningAmberRoundedIcon sx={{ fontSize: 15, color: "#E24B4A" }} />
+              <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: "#A32D2D" }}>
+                {errors.length} formatting issue{errors.length !== 1 ? "s" : ""}
+              </Typography>
+            </Box>
+            {errors.slice(0, 3).map((e) => (
+              <Typography key={e.line} sx={{ fontSize: "0.72rem", color: "#A32D2D", ml: 2.75 }}>
+                Line {e.line}: {e.error}
+              </Typography>
+            ))}
+            {errors.length > 3 && (
+              <Typography sx={{ fontSize: "0.68rem", color: "#C44", ml: 2.75, mt: 0.25 }}>
+                +{errors.length - 3} more…
+              </Typography>
+            )}
+          </Box>
+        )}
+
+        {/* ── Total bar ── */}
+        {total > 0 && (
+          <Box
+            sx={{
+              bgcolor: "#1A1A2E",
+              borderRadius: "10px",
+              px: 2,
+              py: 1.4,
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
             }}
           >
-            <Typography variant="body2" sx={{ opacity: 0.9 }}>
-              Estimated Total
+            <Box>
+              <Typography sx={{ fontSize: "0.62rem", color: "rgba(255,255,255,0.45)", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 }}>
+                Estimated total
+              </Typography>
+              <Typography sx={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.4)", mt: 0.1 }}>
+                {lineCount} item{lineCount !== 1 ? "s" : ""}
+              </Typography>
+            </Box>
+            <Typography
+              sx={{
+                fontFamily: "Georgia, serif",
+                fontSize: "1.5rem",
+                fontWeight: 400,
+                color: "#fff",
+                letterSpacing: "-0.03em",
+              }}
+            >
+              {total.toLocaleString()}
+              <Typography component="span" sx={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.4)", fontFamily: "sans-serif", ml: 0.75 }}>
+                BDT
+              </Typography>
             </Typography>
-            <Typography variant="h5" fontWeight={800}>
-              {total.toLocaleString(undefined, { minimumFractionDigits: 2 })}tk
-            </Typography>
-          </Paper>
-        </Stack>
+          </Box>
+        )}
       </DialogContent>
 
-      {/* Mobile Action */}
+      {/* ── Mobile footer ── */}
       {isMobile && (
-        <Box p={2} borderTop="1px solid" borderColor="divider" bgcolor="white">
+        <Box
+          sx={{
+            px: 2,
+            py: 1.75,
+            borderTop: "1px solid #ECEAE4",
+            bgcolor: "#fff",
+          }}
+        >
           <Button
             fullWidth
-            size="large"
-            variant="contained"
-            disableElevation
             onClick={handleSubmit}
             disabled={errors.length > 0 || loading}
-            sx={{ borderRadius: 2, py: 1.5 }}
+            sx={{
+              bgcolor: "#1A1A2E",
+              color: "#fff",
+              textTransform: "none",
+              fontSize: "0.9rem",
+              fontWeight: 500,
+              borderRadius: "10px",
+              py: 1.4,
+              boxShadow: "none",
+              "&:hover": { bgcolor: "#2E2E4A", boxShadow: "none" },
+              "&.Mui-disabled": { bgcolor: "#D0CEC8", color: "#fff" },
+            }}
           >
             {loading ? (
-              <CircularProgress size={26} color="inherit" />
+              <CircularProgress size={18} sx={{ color: "#fff" }} />
             ) : total > 0 ? (
-              `Save ${total}tk`
+              `Save · ${total.toLocaleString()} BDT`
             ) : (
-              "Save (No Expense)"
+              "Save (no expense)"
             )}
           </Button>
         </Box>

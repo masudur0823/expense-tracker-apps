@@ -1,7 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { useRef } from "react";
 import {
   Box,
   CircularProgress,
@@ -19,10 +18,16 @@ import {
   DialogActions,
   IconButton,
   Chip,
+  Avatar,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import CloseIcon from "@mui/icons-material/Close";
+import TuneIcon from "@mui/icons-material/Tune";
+import AddIcon from "@mui/icons-material/Add";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import AddExpenseButton from "../_components/expense/AddExpenseButton";
 import ExpenseDateCard from "../_components/expense/ExpenseDateCard";
 import AddExpenseModal from "../_components/AddExpenseModal";
@@ -33,11 +38,18 @@ import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 dayjs.extend(isSameOrBefore);
 dayjs.extend(isSameOrAfter);
-
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
 const FILTER_KEY = "expense_filters";
+
+const QUICK_RANGES = [
+  { label: "Today", value: "today" },
+  { label: "Yesterday", value: "yesterday" },
+  { label: "Last 7 days", value: "week" },
+  { label: "This month", value: "month" },
+  { label: "Last month", value: "Lastmonth" },
+];
 
 export default function ExpensePage() {
   const [expenses, setExpenses] = useState([]);
@@ -48,8 +60,6 @@ export default function ExpensePage() {
   const isHydrated = useRef(false);
   const [activeQuick, setActiveQuick] = useState(null);
   const [selectedCategories, setSelectedCategories] = useState([]);
-
-  // Default to null or specific range if you prefer
   const [fromDate, setFromDate] = useState(dayjs().startOf("month"));
   const [toDate, setToDate] = useState(dayjs().endOf("month"));
 
@@ -75,10 +85,8 @@ export default function ExpensePage() {
 
   const handleEdit = async (id, values) => {
     await axios.put(`/api/expense/${id}`, values);
-    fetchExpenses(); // refetch or mutate
+    fetchExpenses();
   };
-
- 
 
   useEffect(() => {
     const saved = localStorage.getItem(FILTER_KEY);
@@ -94,21 +102,19 @@ export default function ExpensePage() {
 
   useEffect(() => {
     if (!isHydrated.current) return;
-
-    // If all filters are empty → remove storage
     if (!search && !fromDate && !toDate && selectedCategories.length === 0) {
       localStorage.removeItem(FILTER_KEY);
       return;
     }
-
-    // Save filters to localStorage
-    const filtersToSave = {
-      search,
-      fromDate: fromDate ? fromDate.toISOString() : null,
-      toDate: toDate ? toDate.toISOString() : null,
-      categories: selectedCategories,
-    };
-    localStorage.setItem(FILTER_KEY, JSON.stringify(filtersToSave));
+    localStorage.setItem(
+      FILTER_KEY,
+      JSON.stringify({
+        search,
+        fromDate: fromDate ? fromDate.toISOString() : null,
+        toDate: toDate ? toDate.toISOString() : null,
+        categories: selectedCategories,
+      })
+    );
   }, [search, fromDate, toDate, selectedCategories]);
 
   useEffect(() => {
@@ -118,65 +124,42 @@ export default function ExpensePage() {
   const handleQuickRange = (range) => {
     const today = dayjs();
     setActiveQuick(range);
-    setSelectedCategories([]); // Reset categories when quick range is selected
-
-    if (range === "today") {
-      setFromDate(today);
-      setToDate(today);
-    } else if (range === "yesterday") {
-      const yesterday = today.subtract(1, "day");
-      setFromDate(yesterday);
-      setToDate(yesterday);
-    } else if (range === "week") {
-      setFromDate(today.subtract(7, "day"));
-      setToDate(today);
-    } else if (range === "month") {
-      setFromDate(today.startOf("month"));
-      setToDate(today.endOf("month"));
-    } else if (range === "Lastmonth") {
-      const lastMonth = today.subtract(1, "month");
-      setFromDate(lastMonth.startOf("month"));
-      setToDate(lastMonth.endOf("month"));
-    }
+    setSelectedCategories([]);
+    if (range === "today") { setFromDate(today); setToDate(today); }
+    else if (range === "yesterday") { const y = today.subtract(1, "day"); setFromDate(y); setToDate(y); }
+    else if (range === "week") { setFromDate(today.subtract(7, "day")); setToDate(today); }
+    else if (range === "month") { setFromDate(today.startOf("month")); setToDate(today.endOf("month")); }
+    else if (range === "Lastmonth") { const lm = today.subtract(1, "month"); setFromDate(lm.startOf("month")); setToDate(lm.endOf("month")); }
   };
 
-  const handleCategoryToggle = (categoryValue) => {
-    setSelectedCategories((prev) => {
-      if (prev.includes(categoryValue)) {
-        return prev.filter((c) => c !== categoryValue);
-      } else {
-        return [...prev, categoryValue];
-      }
-    });
+  const handleCategoryToggle = (val) => {
+    setSelectedCategories((prev) =>
+      prev.includes(val) ? prev.filter((c) => c !== val) : [...prev, val]
+    );
   };
 
   const filteredExpenses = expenses.filter((e) => {
-    const matchesSearch = e.expenseName
-      .toLowerCase()
-      .includes(search.toLowerCase());
-
+    const matchesSearch = e.expenseName.toLowerCase().includes(search.toLowerCase());
     const expenseDate = dayjs(e.date).startOf("day");
     const from = fromDate ? dayjs(fromDate).startOf("day") : null;
     const to = toDate ? dayjs(toDate).startOf("day") : null;
-
     const inDateRange =
       (!from || expenseDate.isSameOrAfter(from)) &&
       (!to || expenseDate.isSameOrBefore(to));
-
-    // Add category filter logic
-    const category = e.category || "other"; // Default to "other" if not specified
+    const category = e.category || "other";
     const matchesCategory =
       selectedCategories.length === 0 || selectedCategories.includes(category);
-
     return matchesSearch && inDateRange && matchesCategory;
   });
 
   const groupedData = groupExpensesByDate(filteredExpenses);
   const sortedGroupedData = [...groupedData].sort(
-    (a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf(),
+    (a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf()
   );
-
   const totalAmount = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+  const hasActiveFilters =
+    search || fromDate || toDate || selectedCategories.length > 0;
 
   const handleResetFilters = () => {
     setSearch("");
@@ -188,381 +171,649 @@ export default function ExpensePage() {
     setFilterOpen(false);
   };
 
-  const handleShowResults = () => {
-    setFilterOpen(false);
+  const getDateRangeLabel = () => {
+    if (!fromDate && !toDate) return "All time";
+    if (fromDate && toDate) {
+      if (dayjs(fromDate).isSame(dayjs(toDate), "day"))
+        return dayjs(fromDate).format("MMM D, YYYY");
+      return `${dayjs(fromDate).format("MMM D")} – ${dayjs(toDate).format("MMM D, YYYY")}`;
+    }
+    if (fromDate) return `From ${dayjs(fromDate).format("MMM D, YYYY")}`;
+    return `Until ${dayjs(toDate).format("MMM D, YYYY")}`;
   };
 
-  // Helper to show the date range text
-  const getFilterText = () => {
-    if (!fromDate && !toDate && !search && selectedCategories.length === 0)
-      return "All Records";
-
-    let text = "";
-    if (fromDate || toDate) {
-      text += `${fromDate ? dayjs(fromDate).format("MMM DD") : "Start"} - ${
-        toDate ? dayjs(toDate).format("MMM DD, YYYY") : "End"
-      }`;
-    }
-    if (selectedCategories.length > 0) {
-      if (text) text += " | ";
-      const selectedLabels = selectedCategories.map(
-        (cat) => CATEGORIES.find((c) => c.value === cat)?.label || cat,
-      );
-      if (selectedLabels.length <= 2) {
-        text += `Categories: ${selectedLabels.join(", ")}`;
-      } else {
-        text += `Categories: ${selectedLabels.length} selected`;
-      }
-    }
-    if (search) {
-      if (text) text += " | ";
-      text += `Search: "${search}"`;
-    }
-    return text;
-  };
-
-  // Helper to get category by value
-  const getCategoryByValue = (value) => {
-    return (
-      CATEGORIES.find((cat) => cat.value === value) ||
-      CATEGORIES[CATEGORIES.length - 1]
-    ); // Return "Other" if not found
-  };
-
-
+  const getCategoryByValue = (value) =>
+    CATEGORIES.find((cat) => cat.value === value) || CATEGORIES[CATEGORIES.length - 1];
 
   return (
     <>
-      <Container maxWidth="md" sx={{ py: 2, pt: 0, px: { xs: 0, sm: 2 } }}>
-        {/* Header */}
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          alignItems="center"
-          mt={2}
-        >
-          <Box display="flex" alignItems="center" gap={1}>
-            <Typography variant="h6" fontWeight="700" color="primary">
-              Expenses
-            </Typography>
-          </Box>
-          <Stack direction="row" spacing={1} alignItems={"center"}>
-            <IconButton
-              size="small"
-              onClick={() => setFilterOpen(true)}
-              sx={{
-                border: "1px solid",
-                borderColor: "divider",
-                ml: "0 !important",
-                position: "relative",
-              }}
-            >
-              <FilterListIcon fontSize="small" />
-              {/* {(search ||
-                fromDate ||
-                toDate ||
-                selectedCategories.length > 0) && (
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: -4,
-                    right: -4,
-                    width: 8,
-                    height: 8,
-                    bgcolor: "primary.main",
-                    borderRadius: "50%",
-                  }}
-                />
-              )} */}
-            </IconButton>
-            <AddExpenseButton onClick={() => setOpen(true)} />
-          </Stack>
-        </Box>
-
-        {/* --- Filter Value Display (Top) --- */}
+      <Box
+        sx={{
+          minHeight: "100vh",
+          bgcolor: "#F8F7F4",
+          pb: 8,
+        }}
+      >
+        {/* ─── Top Header Bar ─── */}
         <Box
           sx={{
-            mt: 1,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            bgcolor: "#fff",
+            borderBottom: "1px solid #ECEAE4",
+            px: { xs: 2, sm: 3 },
+            py: 2,
+            position: "sticky",
+            top: 0,
+            zIndex: 100,
           }}
         >
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ fontStyle: "italic" }}
+          <Box
+            maxWidth="720px"
+            mx="auto"
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
           >
-            {getFilterText()}
-          </Typography>
-          <Typography variant="subtitle2" fontWeight="bold" color="primary">
-            Total: {totalAmount.toLocaleString()}tk
-          </Typography>
+            <Box display="flex" alignItems="center" gap={1.5}>
+              <Box
+                sx={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: "10px",
+                  bgcolor: "#1A1A2E",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <ReceiptLongIcon sx={{ color: "#fff", fontSize: 18 }} />
+              </Box>
+              <Typography
+                sx={{
+                  fontFamily: "'DM Serif Display', Georgia, serif",
+                  fontSize: "1.15rem",
+                  fontWeight: 400,
+                  color: "#1A1A2E",
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                Expenses
+              </Typography>
+            </Box>
+
+            <Stack direction="row" spacing={1} alignItems="center">
+              {/* Filter trigger */}
+              <Button
+                onClick={() => setFilterOpen(true)}
+                variant="outlined"
+                size="small"
+                startIcon={<TuneIcon sx={{ fontSize: "14px !important" }} />}
+                sx={{
+                  borderRadius: "8px",
+                  border: "1px solid #DDDBD5",
+                  color: "#555",
+                  fontSize: "0.78rem",
+                  fontWeight: 500,
+                  textTransform: "none",
+                  px: 1.5,
+                  py: 0.6,
+                  bgcolor: hasActiveFilters ? "#F0EDE6" : "#fff",
+                  "&:hover": { bgcolor: "#F0EDE6", border: "1px solid #C8C5BE" },
+                  gap: 0.5,
+                }}
+              >
+              <Typography component={"span"} sx={{display:{xs:'none',sm:'inline-block'}}}>Filter</Typography>
+                {hasActiveFilters && (
+                  <Box
+                    component="span"
+                    sx={{
+                      ml: 0.5,
+                      bgcolor: "#1A1A2E",
+                      color: "#fff",
+                      borderRadius: "4px",
+                      px: "5px",
+                      py: "1px",
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {[
+                      search ? 1 : 0,
+                      fromDate || toDate ? 1 : 0,
+                      selectedCategories.length > 0 ? 1 : 0,
+                    ].reduce((a, b) => a + b, 0)}
+                  </Box>
+                )}
+              </Button>
+
+              {/* Add button */}
+              <Button
+                onClick={() => setOpen(true)}
+                variant="contained"
+                size="small"
+                startIcon={<AddIcon sx={{ fontSize: "15px !important" }} />}
+                sx={{
+                  borderRadius: "8px",
+                  bgcolor: "#1A1A2E",
+                  color: "#fff",
+                  fontSize: "0.78rem",
+                  fontWeight: 500,
+                  textTransform: "none",
+                  px: {xs: .5, sm: 1.5},
+                  py: 0.7,
+                  boxShadow: "none",
+                  "&:hover": { bgcolor: "#2E2E4A", boxShadow: "none" },
+                }}
+              >
+                <Typography component={"span"} sx={{display:{xs:'none',sm:'inline-block'}}}>Add</Typography>
+              </Button>
+            </Stack>
+          </Box>
         </Box>
 
-        <Divider sx={{ mb: 2 }} />
+        {/* ─── Summary Strip ─── */}
+        <Box
+          sx={{
+            bgcolor: "#fff",
+            borderBottom: "1px solid #ECEAE4",
+            px: { xs: 2, sm: 3 },
+            py: 1.5,
+          }}
+        >
+          <Box
+            maxWidth="720px"
+            mx="auto"
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+          >
+            {/* Date range chip */}
+            <Box
+              display="flex"
+              alignItems="center"
+              gap={0.75}
+              sx={{ cursor: "pointer" }}
+              onClick={() => setFilterOpen(true)}
+            >
+              <CalendarTodayIcon sx={{ fontSize: 13, color: "#888" }} />
+              <Typography sx={{ fontSize: "0.78rem", color: "#777", fontWeight: 500 }}>
+                {getDateRangeLabel()}
+              </Typography>
+              <ArrowDropDownIcon sx={{ fontSize: 16, color: "#aaa" }} />
+            </Box>
 
-        {/* Main List */}
-        {loading ? (
-          <Box display="flex" justifyContent="center" py={10}>
-            <CircularProgress />
+            {/* Total */}
+            <Box textAlign="right">
+              <Typography
+                sx={{
+                  fontSize: "1.25rem",
+                  fontWeight: 700,
+                  color: "#1A1A2E",
+                  fontFamily: "'DM Serif Display', Georgia, serif",
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                {totalAmount.toLocaleString()}
+                <Typography
+                  component="span"
+                  sx={{ fontSize: "0.75rem", color: "#999", fontWeight: 400, ml: 0.5 }}
+                >
+                  BDT
+                </Typography>
+              </Typography>
+              <Typography sx={{ fontSize: "0.68rem", color: "#aaa", mt: -0.25 }}>
+                {filteredExpenses.length} transaction{filteredExpenses.length !== 1 ? "s" : ""}
+              </Typography>
+            </Box>
           </Box>
-        ) : groupedData.length === 0 ? (
-          <Typography align="center" color="text.secondary" sx={{ py: 5 }}>
-            No expenses found.
-          </Typography>
-        ) : (
-          <Stack spacing={3}>
-            {sortedGroupedData.map((group) => (
-              <ExpenseDateCard
-                key={group.date}
-                data={group}
-                onDelete={handleDelete}
-                onEdit={handleEdit}
-              />
-            ))}
-          </Stack>
-        )}
+        </Box>
 
-        {/* --- Filter & Stats Modal --- */}
+        {/* ─── Category Quick Chips ─── */}
+        <Box
+          sx={{
+            bgcolor: "#fff",
+            borderBottom: "1px solid #ECEAE4",
+            px: { xs: 2, sm: 3 },
+            py: 1.2,
+            overflowX: "auto",
+            "&::-webkit-scrollbar": { display: "none" },
+          }}
+        >
+          <Box
+            maxWidth="720px"
+            mx="auto"
+            display="flex"
+            gap={0.75}
+            sx={{ flexWrap: "nowrap" }}
+          >
+            <Chip
+              label="All"
+              size="small"
+              onClick={() => setSelectedCategories([])}
+              sx={{
+                fontSize: "0.72rem",
+                fontWeight: selectedCategories.length === 0 ? 600 : 400,
+                bgcolor: selectedCategories.length === 0 ? "#1A1A2E" : "transparent",
+                color: selectedCategories.length === 0 ? "#fff" : "#555",
+                border: "1px solid",
+                borderColor: selectedCategories.length === 0 ? "#1A1A2E" : "#DDDBD5",
+                borderRadius: "6px",
+                height: 28,
+                "& .MuiChip-label": { px: 1.2 },
+              }}
+            />
+            {CATEGORIES.map((cat) => {
+              const isSelected = selectedCategories.includes(cat.value);
+              return (
+                <Chip
+                  key={cat.value}
+                  label={cat.label}
+                  size="small"
+                  onClick={() => handleCategoryToggle(cat.value)}
+                  sx={{
+                    fontSize: "0.72rem",
+                    fontWeight: isSelected ? 600 : 400,
+                    bgcolor: isSelected ? cat.color : "transparent",
+                    color: isSelected ? "#fff" : "#555",
+                    border: "1px solid",
+                    borderColor: isSelected ? cat.color : "#DDDBD5",
+                    borderRadius: "6px",
+                    height: 28,
+                    whiteSpace: "nowrap",
+                    "& .MuiChip-label": { px: 1.2 },
+                    "&:hover": {
+                      bgcolor: isSelected ? cat.color : `${cat.color}15`,
+                    },
+                  }}
+                />
+              );
+            })}
+          </Box>
+        </Box>
+
+        {/* ─── Main Content ─── */}
+        <Box maxWidth="720px" mx="auto" px={{ xs: 1, sm: 3 }} pt={3}>
+          {loading ? (
+            <Box display="flex" justifyContent="center" py={12}>
+              <CircularProgress size={28} sx={{ color: "#1A1A2E" }} />
+            </Box>
+          ) : sortedGroupedData.length === 0 ? (
+            <Box
+              display="flex"
+              flexDirection="column"
+              alignItems="center"
+              py={12}
+              gap={2}
+            >
+              <Box
+                sx={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "16px",
+                  bgcolor: "#ECEAE4",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <ReceiptLongIcon sx={{ color: "#aaa", fontSize: 26 }} />
+              </Box>
+              <Typography sx={{ color: "#aaa", fontSize: "0.875rem" }}>
+                No expenses found for this period
+              </Typography>
+              {hasActiveFilters && (
+                <Button
+                  size="small"
+                  onClick={handleResetFilters}
+                  sx={{
+                    color: "#1A1A2E",
+                    textTransform: "none",
+                    fontSize: "0.78rem",
+                    fontWeight: 500,
+                    textDecoration: "underline",
+                  }}
+                >
+                  Clear filters
+                </Button>
+              )}
+            </Box>
+          ) : (
+            <Stack spacing={4}>
+              {sortedGroupedData.map((group) => (
+                <ExpenseDateCard
+                  key={group.date}
+                  data={group}
+                  onDelete={handleDelete}
+                  onEdit={handleEdit}
+                />
+              ))}
+            </Stack>
+          )}
+        </Box>
+
+        {/* ─── Filter Drawer / Dialog ─── */}
         <Dialog
           open={filterOpen}
           onClose={() => setFilterOpen(false)}
           fullWidth
           maxWidth="sm"
+          PaperProps={{
+            sx: {
+              borderRadius: "16px",
+              boxShadow: "0 24px 60px rgba(0,0,0,0.12)",
+            },
+          }}
         >
           <DialogTitle
             sx={{
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              pb: 1,
+              pt: 2.5,
+              px: 3,
             }}
           >
-            Filters & Summary
-            <IconButton onClick={() => setFilterOpen(false)}>
-              <CloseIcon />
+            <Typography
+              sx={{
+                fontFamily: "'DM Serif Display', Georgia, serif",
+                fontSize: "1.15rem",
+                fontWeight: 400,
+                color: "#1A1A2E",
+              }}
+            >
+              Filters
+            </Typography>
+            <IconButton
+              onClick={() => setFilterOpen(false)}
+              size="small"
+              sx={{ color: "#aaa", "&:hover": { bgcolor: "#F0EDE6" } }}
+            >
+              <CloseIcon fontSize="small" />
             </IconButton>
           </DialogTitle>
 
-          <DialogContent dividers>
+          <DialogContent dividers sx={{ px: 3, py: 3, borderColor: "#ECEAE4" }}>
             <Stack spacing={3}>
-              {/* Quick Select Buttons */}
+              {/* Quick range */}
               <Box>
-                <Typography variant="subtitle2" mb={1} fontWeight="600">
-                  Quick Select
+                <Typography
+                  sx={{
+                    fontSize: "0.7rem",
+                    fontWeight: 700,
+                    color: "#aaa",
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    mb: 1.2,
+                  }}
+                >
+                  Quick range
                 </Typography>
-                <Stack direction="row" gap={1} flexWrap={"wrap"}>
-                  <Chip
-                    label="Today"
-                    clickable
-                    onClick={() => handleQuickRange("today")}
-                    color={activeQuick === "today" ? "primary" : "default"}
-                  />
-
-                  <Chip
-                    label="Yesterday"
-                    clickable
-                    onClick={() => handleQuickRange("yesterday")}
-                    color={activeQuick === "yesterday" ? "primary" : "default"}
-                  />
-
-                  <Chip
-                    label="Last 7 Days"
-                    clickable
-                    onClick={() => handleQuickRange("week")}
-                    color={activeQuick === "week" ? "primary" : "default"}
-                  />
-
-                  <Chip
-                    label="This Month"
-                    clickable
-                    onClick={() => handleQuickRange("month")}
-                    color={activeQuick === "month" ? "primary" : "default"}
-                  />
-
-                  <Chip
-                    label="Last Month"
-                    clickable
-                    onClick={() => handleQuickRange("Lastmonth")}
-                    color={activeQuick === "Lastmonth" ? "primary" : "default"}
-                  />
+                <Stack direction="row" gap={0.75} flexWrap="wrap">
+                  {QUICK_RANGES.map((r) => (
+                    <Chip
+                      key={r.value}
+                      label={r.label}
+                      clickable
+                      onClick={() => handleQuickRange(r.value)}
+                      size="small"
+                      sx={{
+                        fontSize: "0.75rem",
+                        fontWeight: activeQuick === r.value ? 600 : 400,
+                        bgcolor: activeQuick === r.value ? "#1A1A2E" : "transparent",
+                        color: activeQuick === r.value ? "#fff" : "#555",
+                        border: "1px solid",
+                        borderColor: activeQuick === r.value ? "#1A1A2E" : "#DDDBD5",
+                        borderRadius: "7px",
+                        height: 30,
+                        "&:hover": {
+                          bgcolor: activeQuick === r.value ? "#2E2E4A" : "#F0EDE6",
+                        },
+                      }}
+                    />
+                  ))}
                 </Stack>
               </Box>
 
-              {/* Search */}
-              <Box>
-                <Typography variant="subtitle2" mb={1} fontWeight="600">
-                  Search
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  placeholder="Search expense..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Box>
+              <Divider sx={{ borderColor: "#ECEAE4" }} />
 
-              {/* Date Range Picker */}
+              {/* Date range */}
               <Box>
-                <Typography variant="subtitle2" mb={1} fontWeight="600">
-                  Date Range
+                <Typography
+                  sx={{
+                    fontSize: "0.7rem",
+                    fontWeight: 700,
+                    color: "#aaa",
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    mb: 1.5,
+                  }}
+                >
+                  Date range
                 </Typography>
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                     <DatePicker
                       label="From"
                       value={fromDate}
-                      onChange={(newValue) => setFromDate(newValue)}
+                      onChange={(v) => { setFromDate(v); setActiveQuick(null); }}
                       slotProps={{
-                        textField: { size: "small", fullWidth: true },
+                        textField: {
+                          size: "small",
+                          fullWidth: true,
+                          sx: { "& .MuiOutlinedInput-root": { borderRadius: "8px" } },
+                        },
                       }}
                     />
                     <DatePicker
                       label="To"
                       value={toDate}
-                      onChange={(newValue) => setToDate(newValue)}
+                      onChange={(v) => { setToDate(v); setActiveQuick(null); }}
                       slotProps={{
-                        textField: { size: "small", fullWidth: true },
+                        textField: {
+                          size: "small",
+                          fullWidth: true,
+                          sx: { "& .MuiOutlinedInput-root": { borderRadius: "8px" } },
+                        },
                       }}
                     />
                   </Stack>
                 </LocalizationProvider>
               </Box>
 
-              {/* Category Filter */}
+              <Divider sx={{ borderColor: "#ECEAE4" }} />
+
+              {/* Search */}
               <Box>
-                <Box
-                  display="flex"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  mb={1}
+                <Typography
+                  sx={{
+                    fontSize: "0.7rem",
+                    fontWeight: 700,
+                    color: "#aaa",
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    mb: 1.2,
+                  }}
                 >
-                  <Typography variant="subtitle2" fontWeight="600">
+                  Search
+                </Typography>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="Search by name…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon fontSize="small" sx={{ color: "#bbb" }} />
+                      </InputAdornment>
+                    ),
+                    sx: { borderRadius: "8px" },
+                  }}
+                />
+              </Box>
+
+              <Divider sx={{ borderColor: "#ECEAE4" }} />
+
+              {/* Categories */}
+              <Box>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.2}>
+                  <Typography
+                    sx={{
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      color: "#aaa",
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                    }}
+                  >
                     Categories
                   </Typography>
                   {selectedCategories.length > 0 && (
                     <Button
                       size="small"
                       onClick={() => setSelectedCategories([])}
+                      sx={{
+                        color: "#888",
+                        textTransform: "none",
+                        fontSize: "0.72rem",
+                        fontWeight: 500,
+                        minWidth: 0,
+                        p: "2px 6px",
+                        "&:hover": { bgcolor: "#F0EDE6" },
+                      }}
                     >
-                      Clear All
+                      Clear
                     </Button>
                   )}
                 </Box>
-                <Stack direction="row" gap={1} flexWrap="wrap">
-                  {CATEGORIES.map((category) => {
-                    const isSelected = selectedCategories.includes(
-                      category.value,
-                    );
+                <Stack direction="row" gap={0.75} flexWrap="wrap">
+                  {CATEGORIES.map((cat) => {
+                    const isSelected = selectedCategories.includes(cat.value);
                     return (
                       <Chip
-                        key={category.value}
-                        label={category.label}
-                        icon={category.icon}
+                        key={cat.value}
+                        label={cat.label}
                         clickable
-                        onClick={() => handleCategoryToggle(category.value)}
+                        size="small"
+                        onClick={() => handleCategoryToggle(cat.value)}
                         sx={{
-                          backgroundColor: isSelected
-                            ? category.color
-                            : "transparent",
-                          color: isSelected ? "white" : "inherit",
-                          border: `1px solid ${category.color}`,
+                          fontSize: "0.75rem",
+                          fontWeight: isSelected ? 600 : 400,
+                          bgcolor: isSelected ? cat.color : "transparent",
+                          color: isSelected ? "#fff" : "#555",
+                          border: "1px solid",
+                          borderColor: isSelected ? cat.color : "#DDDBD5",
+                          borderRadius: "7px",
+                          height: 30,
                           "& .MuiChip-icon": {
-                            color: isSelected ? "white" : category.color,
+                            color: isSelected ? "#fff" : cat.color,
+                            fontSize: 14,
                           },
                           "&:hover": {
-                            backgroundColor: isSelected
-                              ? category.color
-                              : `${category.color}20`,
+                            bgcolor: isSelected ? cat.color : `${cat.color}18`,
                           },
                         }}
                       />
                     );
                   })}
                 </Stack>
-                {selectedCategories.length > 0 && (
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ mt: 1, display: "block" }}
-                  >
-                    Selected: {selectedCategories.length} of {CATEGORIES.length}{" "}
-                    categories
-                  </Typography>
-                )}
               </Box>
 
-              {/* Summary Statistics */}
-              <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
-                <Typography variant="subtitle2" mb={1} fontWeight="600">
+              {/* Summary box */}
+              <Box
+                sx={{
+                  bgcolor: "#F8F7F4",
+                  border: "1px solid #ECEAE4",
+                  borderRadius: "10px",
+                  p: 2,
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontSize: "0.7rem",
+                    fontWeight: 700,
+                    color: "#aaa",
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    mb: 1.25,
+                  }}
+                >
                   Summary
                 </Typography>
-                <Box display="flex" justifyContent="space-between">
-                  <Typography variant="body2">Matching expenses:</Typography>
-                  <Typography variant="body2" fontWeight="bold">
-                    {filteredExpenses.length}
-                  </Typography>
-                </Box>
-                <Box display="flex" justifyContent="space-between">
-                  <Typography variant="body2">Total amount:</Typography>
-                  <Typography variant="body2" fontWeight="bold" color="primary">
-                    {totalAmount.toLocaleString()}tk
-                  </Typography>
-                </Box>
-                {selectedCategories.length > 0 && (
-                  <Box mt={1}>
-                    <Typography variant="caption" color="text.secondary">
-                      Showing expenses from {selectedCategories.length} categor
-                      {selectedCategories.length === 1 ? "y" : "ies"}
+                <Stack spacing={0.75}>
+                  <Box display="flex" justifyContent="space-between">
+                    <Typography sx={{ fontSize: "0.82rem", color: "#666" }}>
+                      Transactions
                     </Typography>
-                    <Stack
-                      direction="row"
-                      spacing={0.5}
-                      flexWrap="wrap"
-                      mt={0.5}
-                    >
-                      {selectedCategories.map((catValue) => {
-                        const cat = getCategoryByValue(catValue);
-                        return (
-                          <Chip
-                            key={cat.value}
-                            label={cat.label}
-                            size="small"
-                            sx={{
-                              backgroundColor: cat.color,
-                              color: "white",
-                              fontSize: "0.65rem",
-                              height: "20px",
-                              margin: "2px",
-                            }}
-                          />
-                        );
-                      })}
-                    </Stack>
+                    <Typography sx={{ fontSize: "0.82rem", fontWeight: 600, color: "#1A1A2E" }}>
+                      {filteredExpenses.length}
+                    </Typography>
                   </Box>
-                )}
-              </Paper>
+                  <Box display="flex" justifyContent="space-between">
+                    <Typography sx={{ fontSize: "0.82rem", color: "#666" }}>
+                      Total
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontSize: "0.9rem",
+                        fontWeight: 700,
+                        color: "#1A1A2E",
+                        fontFamily: "'DM Serif Display', Georgia, serif",
+                      }}
+                    >
+                      {totalAmount.toLocaleString()} BDT
+                    </Typography>
+                  </Box>
+                </Stack>
+              </Box>
             </Stack>
           </DialogContent>
 
-          <DialogActions sx={{ p: 2 }}>
-            <Button color="inherit" onClick={handleResetFilters}>
-              Reset All Filters
+          <DialogActions
+            sx={{
+              px: 3,
+              py: 2,
+              gap: 1,
+              borderTop: "1px solid #ECEAE4",
+            }}
+          >
+            <Button
+              onClick={handleResetFilters}
+              sx={{
+                color: "#888",
+                textTransform: "none",
+                fontSize: "0.82rem",
+                fontWeight: 500,
+                borderRadius: "8px",
+                px: 2,
+                "&:hover": { bgcolor: "#F0EDE6" },
+              }}
+            >
+              Reset all
             </Button>
-            <Button variant="contained" onClick={handleShowResults}>
-              Apply Filters
+            <Button
+              variant="contained"
+              onClick={() => setFilterOpen(false)}
+              sx={{
+                bgcolor: "#1A1A2E",
+                color: "#fff",
+                textTransform: "none",
+                fontSize: "0.82rem",
+                fontWeight: 500,
+                borderRadius: "8px",
+                px: 3,
+                boxShadow: "none",
+                "&:hover": { bgcolor: "#2E2E4A", boxShadow: "none" },
+              }}
+            >
+              Apply
             </Button>
           </DialogActions>
         </Dialog>
 
+        {/* Add Modal */}
         <AddExpenseModal
           open={open}
           onClose={() => {
@@ -570,7 +821,7 @@ export default function ExpensePage() {
             fetchExpenses();
           }}
         />
-      </Container>
+      </Box>
     </>
   );
 }
