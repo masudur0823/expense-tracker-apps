@@ -22,17 +22,21 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import dayjs from "dayjs";
 import { useState, useMemo } from "react";
 import CATEGORIES from "../../staticData/category";
 
-export default function ExpenseDateCard({ data, onDelete, onEdit }) {
+export default function ExpenseDateCard({ data, onDelete, onEdit, index }) {
   const [showActions, setShowActions] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [editValues, setEditValues] = useState({ expenseName: "", amount: "", category: "" });
+  const [editValues, setEditValues] = useState({
+    expenseName: "",
+    amount: "",
+    category: "",
+    date: "",
+  });
   const [saving, setSaving] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [expanded, setExpanded] = useState(true);
@@ -52,7 +56,10 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
       : dayjs(data.date).format("YYYY");
 
   const sortedItems = useMemo(
-    () => [...(data.items || [])].sort((a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf()),
+    () =>
+      [...(data.items || [])].sort(
+        (a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf()
+      ),
     [data.items]
   );
 
@@ -72,14 +79,20 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
 
   const openEditModal = (item) => {
     setEditingItem(item);
-    setEditValues({ expenseName: item.expenseName, amount: item.amount, category: item.category || "" });
+    setEditValues({
+      expenseName: item.expenseName,
+      amount: item.amount,
+      category: item.category || "",
+      // Use the item's own date if available, otherwise fall back to the card's date
+      date: dayjs(item.date ?? data.date).format("YYYY-MM-DD"),
+    });
     setModalOpen(true);
   };
 
   const closeModal = () => {
     setModalOpen(false);
     setEditingItem(null);
-    setEditValues({ expenseName: "", amount: "", category: "" });
+    setEditValues({ expenseName: "", amount: "", category: "", date: "" });
   };
 
   const saveEdit = async () => {
@@ -106,7 +119,7 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
         {/* ── Card Header ── */}
         <Box
           sx={{
-            px: {xs:0,sm:2},
+            px: { xs: 0, sm: 2 },
             py: 1.4,
             display: "flex",
             justifyContent: "space-between",
@@ -120,7 +133,6 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
         >
           {/* Left: date + selection badge */}
           <Box display="flex" alignItems="center" gap={1}>
-            {/* Expand/collapse arrow */}
             <Box
               sx={{
                 color: "#bbb",
@@ -143,10 +155,10 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
                   letterSpacing: "-0.01em",
                 }}
               >
-                {dateLabel}
+                {/* {dateLabel} */}
               </Typography>
               <Typography sx={{ fontSize: "0.7rem", color: "#bbb", fontWeight: 400 }}>
-                {dateSubLabel}
+                {dayjs(data.date).format("DD/MM/YY")}
               </Typography>
 
               {selectedIds.length > 0 && (
@@ -175,7 +187,6 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
             gap={1.5}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Total amount */}
             <Box display="flex" alignItems="baseline" gap={0.5}>
               <Typography
                 sx={{
@@ -192,18 +203,12 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
                 BDT
               </Typography>
               <Typography
-                sx={{
-                  fontSize: "0.62rem",
-                  color: "#ccc",
-                  fontWeight: 400,
-                  ml: 0.25,
-                }}
+                sx={{ fontSize: "0.62rem", color: "#ccc", fontWeight: 400, ml: 0.25 }}
               >
                 · {sortedItems.length} item{sortedItems.length !== 1 ? "s" : ""}
               </Typography>
             </Box>
 
-            {/* Clear selection */}
             {selectedIds.length > 0 && (
               <Button
                 size="small"
@@ -221,7 +226,6 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
               </Button>
             )}
 
-            {/* More actions toggle */}
             <IconButton
               size="small"
               onClick={() => setShowActions((p) => !p)}
@@ -260,12 +264,9 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
                     bgcolor: isSelected ? "#F5F3EF" : "transparent",
                     borderBottom: isLast ? "none" : "1px solid #F7F5F2",
                     transition: "background 0.12s",
-                    "&:hover": {
-                      bgcolor: isSelected ? "#F0EDE6" : "#FAFAF8",
-                    },
+                    "&:hover": { bgcolor: isSelected ? "#F0EDE6" : "#FAFAF8" },
                   }}
                 >
-                  {/* Selection indicator — left stripe */}
                   <Box
                     sx={{
                       width: 3,
@@ -277,7 +278,6 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
                     }}
                   />
 
-                  {/* Category icon box */}
                   <Box
                     sx={{
                       width: 28,
@@ -292,15 +292,22 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
                     }}
                   >
                     {cat.icon ? (
-                      <Box sx={{ fontSize: 13, lineHeight: 1, "& svg": { fontSize: "13px !important" } }}>
+                      <Box
+                        sx={{
+                          fontSize: 13,
+                          lineHeight: 1,
+                          "& svg": { fontSize: "13px !important" },
+                        }}
+                      >
                         {cat.icon}
                       </Box>
                     ) : (
-                      <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: cat.color }} />
+                      <Box
+                        sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: cat.color }}
+                      />
                     )}
                   </Box>
 
-                  {/* Name + category label */}
                   <Box flex={1} minWidth={0}>
                     <Typography
                       noWrap
@@ -314,19 +321,13 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
                     </Typography>
                     {item.category && (
                       <Typography
-                        sx={{
-                          fontSize: "0.65rem",
-                          color: cat.color,
-                          fontWeight: 500,
-                          mt: 0.1,
-                        }}
+                        sx={{ fontSize: "0.65rem", color: cat.color, fontWeight: 500, mt: 0.1 }}
                       >
                         {cat.label}
                       </Typography>
                     )}
                   </Box>
 
-                  {/* Amount */}
                   <Typography
                     sx={{
                       fontSize: "0.88rem",
@@ -340,12 +341,14 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
                     {Number(item.amount).toLocaleString()}
                   </Typography>
 
-                  {/* Edit / Delete actions */}
                   {showActions && (
                     <Box display="flex" gap={0.25} flexShrink={0}>
                       <IconButton
                         size="small"
-                        onClick={(e) => { e.stopPropagation(); openEditModal(item); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditModal(item);
+                        }}
                         sx={{
                           color: "#aaa",
                           borderRadius: "7px",
@@ -392,10 +395,7 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
         maxWidth="sm"
         fullWidth
         PaperProps={{
-          sx: {
-            borderRadius: "14px",
-            boxShadow: "0 20px 50px rgba(0,0,0,0.1)",
-          },
+          sx: { borderRadius: "14px", boxShadow: "0 20px 50px rgba(0,0,0,0.1)" },
         }}
       >
         <DialogTitle
@@ -428,13 +428,19 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
           <IconButton
             size="small"
             onClick={closeModal}
-            sx={{ color: "#bbb", "&:hover": { bgcolor: "#F0EDE6" }, borderRadius: "7px" }}
+            sx={{
+              color: "#bbb",
+              "&:hover": { bgcolor: "#F0EDE6" },
+              borderRadius: "7px",
+            }}
           >
             <CloseIcon fontSize="small" />
           </IconButton>
         </DialogTitle>
 
-        <DialogContent sx={{ px: 3, pb: 2, borderTop: "1px solid #ECEAE4", pt: "20px !important" }}>
+        <DialogContent
+          sx={{ px: 3, pb: 2, borderTop: "1px solid #ECEAE4", pt: "20px !important" }}
+        >
           <Stack spacing={2} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && saveEdit()}>
             <TextField
               autoFocus
@@ -473,6 +479,19 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
               </Select>
             </FormControl>
 
+            {/* ── Date field (new) ── */}
+            <TextField
+              label="Date"
+              type="date"
+              fullWidth
+              size="small"
+              value={editValues.date}
+              onChange={(e) => setEditValues({ ...editValues, date: e.target.value })}
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ max: dayjs().format("YYYY-MM-DD") }}
+              InputProps={{ sx: { borderRadius: "8px" } }}
+            />
+
             <TextField
               label="Amount"
               type="number"
@@ -482,7 +501,9 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
               onChange={(e) => setEditValues({ ...editValues, amount: e.target.value })}
               InputProps={{
                 startAdornment: (
-                  <Typography sx={{ mr: 0.75, color: "#aaa", fontSize: "0.88rem" }}>৳</Typography>
+                  <Typography sx={{ mr: 0.75, color: "#aaa", fontSize: "0.88rem" }}>
+                    ৳
+                  </Typography>
                 ),
                 sx: { borderRadius: "8px" },
               }}
@@ -509,8 +530,10 @@ export default function ExpenseDateCard({ data, onDelete, onEdit }) {
           <Button
             onClick={saveEdit}
             variant="contained"
-            disabled={saving || !editValues.expenseName || !editValues.amount}
-            startIcon={saving ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : null}
+            disabled={saving || !editValues.expenseName || !editValues.amount || !editValues.date}
+            startIcon={
+              saving ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : null
+            }
             sx={{
               bgcolor: "#1A1A2E",
               color: "#fff",

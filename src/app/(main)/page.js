@@ -478,7 +478,7 @@ export default function ExpensePage() {
               )}
             </Box>
           ) : (
-            <Stack spacing={4}>
+            <Stack spacing={2}>
               {sortedGroupedData.map((group) => (
                 <ExpenseDateCard
                   key={group.date}
