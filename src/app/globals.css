@@ -1,1 +1,29 @@
-*{font-family: "Inter", sans-serif;}
+* {
+  font-family: "Inter", sans-serif;
+}
+
+#view-income {
+ 
+}
+
+caption{
+    text-align: center;
+    display:block;
+}
+
+.income-container {
+  overflow-x: auto;
+}
+
+.income-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #ccc;
+}
+
+.income-table th,
+td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: left;
+}

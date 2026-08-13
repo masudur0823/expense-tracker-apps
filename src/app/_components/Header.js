@@ -3,6 +3,8 @@
 import {
   Avatar,
   Box,
+  Button,
+  Container,
   Divider,
   Drawer,
   IconButton,
@@ -20,10 +22,11 @@ import ReportIcon from "@mui/icons-material/Report";
 import Switch from "@mui/material/Switch";
 import Brightness4Icon from "@mui/icons-material/Brightness4";
 import LogoutIcon from "@mui/icons-material/Logout";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname  } from "next/navigation";
 
 function Header() {
   const router = useRouter();
+  const pathname = usePathname()
 
   const [darkMode, setDarkMode] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -74,11 +77,26 @@ function Header() {
   };
 
   return (
-    <>
-      <Stack justifyContent={"center"} alignItems={"center"}>
+    <Container>
+      <Stack flexDirection={"row"} justifyContent={"space-between"} alignItems={"center"}>
         <IconButton size="small" onClick={() => setDrawerOpen(true)}>
           <MenuIcon />
         </IconButton>
+
+        <Stack flexDirection={"row"} gap={1}>
+          {
+            pathname === "/income" ? (
+              <Button variant="outlined" onClick={() => router.push("/")}>
+                Expense
+              </Button>
+            ) : (
+              <Button variant="contained" onClick={() => router.push("/income")}>
+                Income
+              </Button>
+            )
+          }
+          
+        </Stack>
       </Stack>
 
       <Drawer
@@ -136,7 +154,7 @@ function Header() {
           </List>
         </Box>
       </Drawer>
-    </>
+    </Container>
   );
 }
 export default Header;

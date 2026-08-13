@@ -174,7 +174,8 @@ export default function ExpenseDateCard({ data, onDelete, onEdit, index }) {
                     fontWeight: 600,
                   }}
                 >
-                  {selectedIds.length} · {selectedTotal.toLocaleString()} BDT
+                  {/* {selectedIds.length} ·  */}
+                  {selectedTotal.toLocaleString()}
                 </Box>
               )}
             </Box>
@@ -199,14 +200,14 @@ export default function ExpenseDateCard({ data, onDelete, onEdit, index }) {
               >
                 {data.total.toLocaleString()}
               </Typography>
-              <Typography sx={{ fontSize: "0.62rem", color: "#bbb", fontWeight: 400 }}>
+              {/* <Typography sx={{ fontSize: "0.62rem", color: "#bbb", fontWeight: 400 }}>
                 BDT
-              </Typography>
-              <Typography
+              </Typography> */}
+              {/* <Typography
                 sx={{ fontSize: "0.62rem", color: "#ccc", fontWeight: 400, ml: 0.25 }}
               >
                 · {sortedItems.length} item{sortedItems.length !== 1 ? "s" : ""}
-              </Typography>
+              </Typography> */}
             </Box>
 
             {selectedIds.length > 0 && (
@@ -278,7 +279,7 @@ export default function ExpenseDateCard({ data, onDelete, onEdit, index }) {
                     }}
                   />
 
-                  <Box
+                  {/* <Box
                     sx={{
                       width: 28,
                       height: 28,
@@ -306,7 +307,7 @@ export default function ExpenseDateCard({ data, onDelete, onEdit, index }) {
                         sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: cat.color }}
                       />
                     )}
-                  </Box>
+                  </Box> */}
 
                   <Box flex={1} minWidth={0}>
                     <Typography
