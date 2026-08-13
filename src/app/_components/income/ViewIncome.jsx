@@ -207,6 +207,7 @@ function ViewIncome() {
         severity: "error",
       });
     } finally {
+       fetchIncome();
       setDeleting(false);
     }
   };
