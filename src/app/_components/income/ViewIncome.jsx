@@ -43,8 +43,6 @@ function ViewIncome() {
   const [editForm, setEditForm] = React.useState({});
   const [saving, setSaving] = React.useState(false);
 
-  console.log(editForm);
-
   const [deleteItem, setDeleteItem] = React.useState(null); // item pending delete confirmation
   const [deleting, setDeleting] = React.useState(false);
 

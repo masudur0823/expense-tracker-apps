@@ -45,8 +45,6 @@ function Income () {
 
   const handleSubmit = async () => {
     try {
-      console.log(formData)
-
       // Example API
       await axios.post('/api/income', formData)
 
@@ -61,6 +59,8 @@ function Income () {
       })
     } catch (err) {
       console.error(err)
+    } finally {
+      window.location.reload() // Refresh the page after submission
     }
   }
 
