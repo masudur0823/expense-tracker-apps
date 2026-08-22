@@ -7,7 +7,7 @@ export const GET = async (req, res) => {
   try {
     const documents = await Income.find({})
       .select({ __v: 0 })
-      .sort({ createdAt: -1 })
+      .sort({ date: -1 })
       .lean();
 
     const modifiedDocuments = documents.map((doc) => {

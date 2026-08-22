@@ -18,6 +18,7 @@ import {
   CircularProgress,
   Alert,
   Snackbar,
+  MenuItem,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import EditIcon from "@mui/icons-material/Edit";
@@ -30,7 +31,10 @@ import dayjs from "dayjs";
 const ITEMS_PER_PAGE = 10;
 const API_BASE = "/api/income"; // adjust to your actual endpoint
 
-function ViewIncome() {
+function ViewIncome({
+  filters = { search: "", category: "" },
+  categories = [],
+}) {
   const [incomeData, setIncomeData] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
@@ -107,12 +111,30 @@ function ViewIncome() {
     setExpanded(isExpanded ? id : false);
   };
 
+  // ---- Apply filters ----
+  const filteredData = incomeData.filter((item) => {
+    const matchesSearch =
+      !filters.search ||
+      item.incomeName?.toLowerCase().includes(filters.search.toLowerCase()) ||
+      item.notes?.toLowerCase().includes(filters.search.toLowerCase());
+
+    const matchesCategory =
+      !filters.category || item.category === filters.category;
+
+    return matchesSearch && matchesCategory;
+  });
+
   // ---- Pagination ----
-  const pageCount = Math.ceil(incomeData.length / ITEMS_PER_PAGE);
-  const paginatedData = incomeData.slice(
+  const pageCount = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
+  const paginatedData = filteredData.slice(
     (page - 1) * ITEMS_PER_PAGE,
     page * ITEMS_PER_PAGE,
   );
+
+  React.useEffect(() => {
+    setPage(1);
+    setExpanded(false);
+  }, [filters.search, filters.category]);
 
   const handlePageChange = (event, value) => {
     setPage(value);
@@ -205,7 +227,7 @@ function ViewIncome() {
         severity: "error",
       });
     } finally {
-       fetchIncome();
+      fetchIncome();
       setDeleting(false);
     }
   };
@@ -259,10 +281,14 @@ function ViewIncome() {
         Income Details
       </Typography>
 
-      {incomeData.length === 0 ? (
+      {filteredData.length === 0 ? (
         <Stack alignItems="center" spacing={1.5} sx={{ py: 6 }}>
-          <InboxIcon sx={{ fontSize: 48, color: "text.disabled" }} />
-          <Typography color="text.secondary">No income records yet.</Typography>
+          <SearchOffIcon sx={{ fontSize: 48, color: "text.disabled" }} />
+          <Typography color="text.secondary">
+            {incomeData.length === 0
+              ? "No income records yet."
+              : "No income matches your filters."}
+          </Typography>
         </Stack>
       ) : (
         <Stack spacing={1.5}>
@@ -383,11 +409,23 @@ function ViewIncome() {
               fullWidth
             />
             <TextField
+              size="small"
+              select
+              fullWidth
               label="Category"
+              name="category"
               value={editForm.category || ""}
               onChange={handleEditFieldChange("category")}
-              fullWidth
-            />
+              sx={{ minWidth: 200 }}
+            >
+              <MenuItem value="">All Categories</MenuItem>
+              {categories.map((item) => (
+                <MenuItem key={item} value={item}>
+                  {item}
+                </MenuItem>
+              ))}
+            </TextField>
+
             <TextField
               label="Notes"
               value={editForm.notes || ""}
@@ -418,9 +456,10 @@ function ViewIncome() {
         <DialogTitle>Delete income record?</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary">
-            This will permanently delete <strong>{deleteItem?.name}</strong> (
-            {deleteItem?.amount} on {deleteItem?.date}). This action can&apos;t
-            be undone.
+            This will permanently delete{" "}
+            <strong>{deleteItem?.incomeName}</strong> ({deleteItem?.amount} on{" "}
+            {dayjs(deleteItem?.date).format("MM/DD/YYYY")}). This action
+            can&apos;t be undone.
           </Typography>
         </DialogContent>
         <DialogActions>

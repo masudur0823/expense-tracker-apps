@@ -9,7 +9,8 @@ import {
   DialogActions,
   Grid,
   TextField,
-  MenuItem
+  MenuItem,
+  Stack
 } from '@mui/material'
 import ViewIncome from '@/app/_components/income/ViewIncome'
 import axios from 'axios'
@@ -33,6 +34,16 @@ function Income () {
     category: '',
     notes: ''
   })
+
+  const [filters, setFilters] = useState({
+    search: '',
+    category: ''
+  })
+
+  const handleFilterChange = e => {
+    const { name, value } = e.target
+    setFilters(prev => ({ ...prev, [name]: value }))
+  }
 
   const handleChange = e => {
     const { name, value } = e.target
@@ -69,7 +80,37 @@ function Income () {
       <Button variant='contained' onClick={() => setOpen(true)}>
         Add Income
       </Button>
-      <ViewIncome />
+      <Stack direction={{ xs: 'column', md: 'row' }} gap={2} mb={2} mt={2}>
+        <TextField
+          size='small'
+          fullWidth
+          label='Search'
+          name='search'
+          placeholder='Search by income name or notes'
+          value={filters.search}
+          onChange={handleFilterChange}
+        />
+
+        <TextField
+          size='small'
+          select
+          fullWidth
+          label='Category'
+          name='category'
+          value={filters.category}
+          onChange={handleFilterChange}
+          sx={{ minWidth: 200 }}
+        >
+          <MenuItem value=''>All Categories</MenuItem>
+          {categories.map(item => (
+            <MenuItem key={item} value={item}>
+              {item}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Stack>
+
+      <ViewIncome filters={filters} categories={categories}/>
       <Dialog
         open={open}
         onClose={() => setOpen(false)}
